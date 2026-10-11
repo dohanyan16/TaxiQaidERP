@@ -1,0 +1,281 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demanda de taxis - Makkah</title>
+
+  <link rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: #222;
+    }
+
+    header {
+      padding: 16px;
+      background: #17365d;
+      color: white;
+    }
+
+    h1 {
+      font-size: 21px;
+      margin: 0 0 12px;
+    }
+
+    #selector {
+      width: 100%;
+      max-width: 300px;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+    }
+
+    #estado {
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    #map {
+      height: calc(100vh - 145px);
+      min-height: 400px;
+    }
+
+    .leyenda {
+      background: white;
+      padding: 10px;
+      line-height: 1.6;
+      box-shadow: 0 1px 5px #999;
+      border-radius: 5px;
+    }
+
+    .muestra {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Demanda de taxis por zonas</h1>
+    <label for="selector">Selecciona la hora:</label>
+    <br><br>
+
+    <select id="selector"></select>
+    <div id="estado">Cargando datos de QGISCloud...</div>
+  </header>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    const servicio =
+      "https://wms.prod.qgiscloud.com/dohanyan16/Taxi_Makkah_Analisys";
+
+    const capa = "1_Week_October_-_Pick_Up";
+
+    const mapa = L.map("map");
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 19
+    }).addTo(mapa);
+
+    const selector = document.getElementById("selector");
+    const estado = document.getElementById("estado");
+
+    for (let h = 0; h < 24; h++) {
+      const campo = String(h).padStart(2, "0") + ".00";
+      const opcion = document.createElement("option");
+
+      opcion.value = campo;
+      opcion.textContent =
+        String(h).padStart(2, "0") + ":00";
+
+      selector.appendChild(opcion);
+    }
+
+    let datosGeoJSON;
+    let capaMapa;
+    let controlLeyenda;
+
+    const colores = [
+      "#ffffb2",
+      "#fecc5c",
+      "#fd8d3c",
+      "#f03b20",
+      "#bd0026"
+    ];
+
+    function obtenerValor(propiedades, campo) {
+      const valor = Number(propiedades[campo]);
+
+      return propiedades[campo] != null &&
+        propiedades[campo] !== "" &&
+        Number.isFinite(valor)
+        ? valor
+        : null;
+    }
+
+    function crearCortes(valores) {
+      const ordenados = [...valores].sort((a, b) => a - b);
+
+      if (!ordenados.length) return [];
+
+      return [0.2, 0.4, 0.6, 0.8].map(p => {
+        const indice = Math.floor((ordenados.length - 1) * p);
+        return ordenados[indice];
+      });
+    }
+
+    function estilo(feature, campo, cortes) {
+      const valor = obtenerValor(feature.properties, campo);
+
+      if (valor === null) {
+        return {
+          color: "#555",
+          weight: 1,
+          fillColor: "#bdbdbd",
+          fillOpacity: 0.7
+        };
+      }
+
+      let indice = cortes.findIndex(corte => valor <= corte);
+
+      if (indice === -1) indice = 4;
+
+      return {
+        color: "#555",
+        weight: 0.7,
+        fillColor: colores[indice],
+        fillOpacity: 0.75
+      };
+    }
+
+    function actualizarMapa() {
+      if (!datosGeoJSON) return;
+
+      const campo = selector.value;
+
+      const valores = datosGeoJSON.features
+        .map(f => obtenerValor(f.properties, campo))
+        .filter(v => v !== null);
+
+      const cortes = crearCortes(valores);
+
+      if (capaMapa) mapa.removeLayer(capaMapa);
+
+      capaMapa = L.geoJSON(datosGeoJSON, {
+        style: feature => estilo(feature, campo, cortes),
+
+        onEachFeature: (feature, layer) => {
+          const p = feature.properties;
+          const nombre = p.name ?? "Zona sin nombre";
+          const valor = obtenerValor(p, campo);
+
+          layer.bindPopup(
+            "<b>" + nombre + "</b><br>" +
+            "Hora: " + campo.replace(".", ":") + "<br>" +
+            "Demanda: " +
+            (valor === null ? "Sin datos" : valor)
+          );
+        }
+      }).addTo(mapa);
+
+      if (controlLeyenda) mapa.removeControl(controlLeyenda);
+
+      controlLeyenda = L.control({ position: "bottomright" });
+
+      controlLeyenda.onAdd = function () {
+        const div = L.DomUtil.create("div", "leyenda");
+
+        let html = "<b>Demanda · " +
+          campo.replace(".", ":") + "</b><br>";
+
+        for (let i = 0; i < 5; i++) {
+          let etiqueta;
+
+          if (!valores.length) {
+            etiqueta = "Sin datos";
+          } else if (i === 0) {
+            etiqueta = "≤ " + cortes[0];
+          } else if (i === 4) {
+            etiqueta = "> " + cortes[3];
+          } else {
+            etiqueta = cortes[i - 1] + " – " + cortes[i];
+          }
+
+          html +=
+            '<span class="muestra" style="background:' +
+            colores[i] + '"></span>' +
+            etiqueta + "<br>";
+        }
+
+        div.innerHTML = html;
+        return div;
+      };
+
+      controlLeyenda.addTo(mapa);
+
+      estado.textContent =
+        "Datos cargados. Zonas con valor: " + valores.length;
+    }
+
+    async function iniciar() {
+      try {
+        const parametros = new URLSearchParams({
+          service: "WFS",
+          version: "1.1.0",
+          request: "GetFeature",
+          typeName: capa,
+          outputFormat: "application/json"
+        });
+
+        const respuesta = await fetch(
+          servicio + "?" + parametros.toString()
+        );
+
+        if (!respuesta.ok) {
+          throw new Error("Error HTTP " + respuesta.status);
+        }
+
+        const datos = await respuesta.json();
+
+        if (!datos.features || !datos.features.length) {
+          throw new Error("El servicio no ha devuelto polígonos.");
+        }
+
+        datosGeoJSON = datos;
+        actualizarMapa();
+
+        const limites = capaMapa.getBounds();
+
+        if (limites.isValid()) {
+          mapa.fitBounds(limites, { padding: [15, 15] });
+        } else {
+          mapa.setView([21.4, 39.8], 10);
+        }
+
+        selector.addEventListener("change", actualizarMapa);
+
+      } catch (error) {
+        console.error(error);
+
+        estado.textContent =
+          "No se pudieron cargar los datos. Comprueba la conexión WFS y los permisos CORS de QGISCloud.";
+      }
+    }
+
+    iniciar();
+  </script>
+</body>
+</html>
