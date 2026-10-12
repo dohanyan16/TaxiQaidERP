@@ -254,7 +254,7 @@
     let datosGeoJSON = null;
     let capaMapa = null;
     let controlLeyenda = null;
-    let distribucion = null;
+    let bucion = null;
     let cargando = false;
 
     const coloresPickups = [
@@ -567,21 +567,21 @@
           distribucion.totalTaxis - distribucion.totalAsignados;
 
         resumen.textContent =
-          "Flota disponible: " + distribucion.totalTaxis +
-          " | Taxis asignados: " + distribucion.totalAsignados +
-          " | Sin asignar: " + sinAsignar;
+          "Available fleet: " + distribucion.totalTaxis +
+          " | Assigned taxis: " + distribucion.totalAsignados +
+          " | Free Taxis: " + sinAsignar;
 
         if (distribucion.totalPickups === 0) {
           estado.textContent =
-            "No hay pick-ups válidos para la hora seleccionada.";
+            "No Pick-Up.";
         } else {
           estado.textContent =
-            "Distribución calculada correctamente.";
+            "Correctly calculated distribution.";
         }
       } else {
         resumen.textContent = "";
         estado.textContent =
-          "Datos cargados. Selecciona una hora o calcula la distribución.";
+          "Data loaded. Select a time or calculate the distribution.";
       }
     }
 
@@ -590,7 +590,7 @@
 
       cargando = true;
       botonRecargar.disabled = true;
-      estado.textContent = "Cargando datos de QGIS Cloud...";
+      estado.textContent = "Loading data from QGIS Cloud...";
 
       try {
         const parametros = new URLSearchParams({
@@ -635,13 +635,13 @@
         }
 
         estado.textContent =
-          "Datos cargados correctamente desde QGIS Cloud.";
+          "Data successfully loaded from QGIS Cloud.";
 
       } catch (error) {
         console.error(error);
 
         estado.textContent =
-          "No se pudieron cargar los datos. Comprueba el servicio WFS y los permisos CORS de QGIS Cloud.";
+          "The data could not be loaded. Check the WFS service and QGIS Cloud CORS permissions.";
 
       } finally {
         cargando = false;
@@ -652,7 +652,7 @@
     botonCalcular.addEventListener("click", () => {
       if (!datosGeoJSON) {
         estado.textContent =
-          "Espera a que se carguen los datos antes de calcular.";
+          "Wait for the data to load before calculating.";
         return;
       }
 
@@ -665,7 +665,7 @@
         total < 0
       ) {
         estado.textContent =
-          "Introduce un número entero de taxis igual o superior a cero.";
+          "Enter a whole number of taxis equal to or greater than zero.";
         return;
       }
 
