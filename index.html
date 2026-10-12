@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Demanda de taxis - Makkah</title>
+  <title>Taxi Demand Analysis - Makkah</title>
 
   <link rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -65,12 +65,12 @@
 
 <body>
   <header>
-    <h1>Demanda de taxis por zonas</h1>
-    <label for="selector">Selecciona la hora:</label>
+    <h1>Taxi demand per hours</h1>
+    <label for="selector">Select hour:</label>
     <br><br>
 
     <select id="selector"></select>
-    <div id="estado">Cargando datos de QGISCloud...</div>
+    <div id="estado">Updating data from QGis...</div>
   </header>
 
   <div id="map"></div>
@@ -184,8 +184,8 @@
 
           layer.bindPopup(
             "<b>" + nombre + "</b><br>" +
-            "Hora: " + campo.replace(".", ":") + "<br>" +
-            "Demanda: " +
+            "Hour: " + campo.replace(".", ":") + "<br>" +
+            "Number of Pick-Up: " +
             (valor === null ? "Sin datos" : valor)
           );
         }
@@ -198,7 +198,7 @@
       controlLeyenda.onAdd = function () {
         const div = L.DomUtil.create("div", "leyenda");
 
-        let html = "<b>Demanda · " +
+        let html = "<b>Number of Pick-Up · " +
           campo.replace(".", ":") + "</b><br>";
 
         for (let i = 0; i < 5; i++) {
@@ -227,7 +227,7 @@
       controlLeyenda.addTo(mapa);
 
       estado.textContent =
-        "Datos cargados. Zonas con valor: " + valores.length;
+        "Data updated: " + valores.length;
     }
 
     async function iniciar() {
