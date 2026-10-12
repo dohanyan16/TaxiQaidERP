@@ -83,12 +83,19 @@
 
     const capa = "1_Week_October_-_Pick_Up";
 
-    const mapa = L.map("map");
+    const mapa = L.map("map", {
+      center: [21.3891, 39.8579],
+      zoom: 12
+    });
 
-    var satelite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-      attribution: "Tiles &copy; Esri",
-      maxZoom: 19
-    }).addTo(mapa);
+    // Fondo de imágenes satelitales
+    L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        attribution: "Imagery &copy; Esri",
+        maxZoom: 19
+      }
+    ).addTo(mapa);
 
     const selector = document.getElementById("selector");
     const estado = document.getElementById("estado");
