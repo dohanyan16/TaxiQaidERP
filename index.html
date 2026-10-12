@@ -192,7 +192,7 @@
         <div class="grupo">
           <label for="modo">Map display:</label>
           <select id="modo">
-            <option value="pickups">Number of Pick-Ups</option>
+            <option value="pickups">Number of Trips</option>
             <option value="taxis">Recommended Taxis</option>
           </select>
         </div>
@@ -491,7 +491,7 @@
           let contenido =
             "<b>" + escaparHTML(nombre) + "</b><br>" +
             "Hora: " + campo.replace(".", ":") + "<br>" +
-            "Number of Pick-Ups: " +
+            "Number of Trips: " +
             (pickups === null ? "Sin datos" : pickups);
 
           if (distribucion) {
@@ -531,7 +531,7 @@
 
         const titulo = modo === "taxis"
           ? "Taxis recomendados"
-          : "Number of Pick-Up";
+          : "Number of Trips";
 
         let html = "<b>" + titulo + " · " +
           campo.replace(".", ":") + "</b><br>";
@@ -573,7 +573,7 @@
 
         if (distribucion.totalPickups === 0) {
           estado.textContent =
-            "No Pick-Up.";
+            "No Trips.";
         } else {
           estado.textContent =
             "Correctly calculated distribution.";
