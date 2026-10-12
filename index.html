@@ -10,6 +10,10 @@
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       font-family: Arial, sans-serif;
@@ -17,9 +21,17 @@
     }
 
     header {
-      padding: 16px;
+      padding: 14px 18px;
       background: #17365d;
       color: white;
+    }
+
+    .cabecera {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      flex-wrap: wrap;
     }
 
     h1 {
@@ -27,21 +39,80 @@
       margin: 0 0 12px;
     }
 
-    #selector {
-      width: 100%;
-      max-width: 300px;
-      padding: 10px;
-      font-size: 16px;
+    .controles {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .grupo {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    label {
+      font-size: 13px;
+    }
+
+    select,
+    input,
+    button {
+      min-height: 38px;
+      padding: 8px 10px;
       border-radius: 5px;
+      font-size: 14px;
+    }
+
+    select,
+    input {
+      border: 1px solid #bbb;
+      background: white;
+      color: #222;
+    }
+
+    input {
+      width: 145px;
+    }
+
+    button {
+      cursor: pointer;
+      border: 1px solid #ddd;
+      background: white;
+      color: #17365d;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #e8eef5;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    #selector {
+      min-width: 105px;
+    }
+
+    #modo {
+      min-width: 180px;
     }
 
     #estado {
       font-size: 13px;
-      margin-top: 8px;
+      margin-top: 9px;
+    }
+
+    #resumen {
+      font-size: 13px;
+      margin-top: 5px;
     }
 
     #map {
-      height: calc(100vh - 145px);
+      height: calc(100vh - 155px);
       min-height: 400px;
     }
 
@@ -51,6 +122,7 @@
       line-height: 1.6;
       box-shadow: 0 1px 5px #999;
       border-radius: 5px;
+      color: #222;
     }
 
     .muestra {
@@ -59,18 +131,81 @@
       height: 14px;
       margin-right: 6px;
       vertical-align: middle;
+      border: 1px solid #777;
+    }
+
+    @media (max-width: 650px) {
+      .cabecera {
+        flex-direction: column;
+      }
+
+      .controles {
+        width: 100%;
+        align-items: stretch;
+      }
+
+      .grupo {
+        flex: 1 1 135px;
+      }
+
+      input,
+      select {
+        width: 100%;
+        min-width: 0;
+      }
+
+      #map {
+        height: calc(100vh - 280px);
+      }
     }
   </style>
 </head>
 
 <body>
   <header>
-    <h1>Taxi demand per hours</h1>
-    <label for="selector">Select hour:</label>
-    <br><br>
+    <div class="cabecera">
+      <div>
+        <h1>Taxi demand per hours</h1>
+      </div>
 
-    <select id="selector"></select>
-    <div id="estado">Updating data from QGis...</div>
+      <div class="controles">
+        <div class="grupo">
+          <label for="selector">Select hour:</label>
+          <select id="selector"></select>
+        </div>
+
+        <div class="grupo">
+          <label for="flota">Total available taxis:</label>
+          <input
+            id="flota"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="e.g. 1000">
+        </div>
+
+        <div class="grupo">
+          <label>&nbsp;</label>
+          <button id="calcular">Calculate distribution</button>
+        </div>
+
+        <div class="grupo">
+          <label for="modo">Map display:</label>
+          <select id="modo">
+            <option value="pickups">Number of Pick-Ups</option>
+            <option value="taxis">Recommended Taxis</option>
+          </select>
+        </div>
+
+        <div class="grupo">
+          <label>&nbsp;</label>
+          <button id="recargar">Refresh data</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="estado">Loading data from QGIS Cloud...</div>
+    <div id="resumen"></div>
   </header>
 
   <div id="map"></div>
@@ -98,7 +233,12 @@
     ).addTo(mapa);
 
     const selector = document.getElementById("selector");
+    const flotaInput = document.getElementById("flota");
+    const botonCalcular = document.getElementById("calcular");
+    const botonRecargar = document.getElementById("recargar");
+    const selectorModo = document.getElementById("modo");
     const estado = document.getElementById("estado");
+    const resumen = document.getElementById("resumen");
 
     for (let h = 0; h < 24; h++) {
       const campo = String(h).padStart(2, "0") + ".00";
@@ -111,11 +251,13 @@
       selector.appendChild(opcion);
     }
 
-    let datosGeoJSON;
-    let capaMapa;
-    let controlLeyenda;
+    let datosGeoJSON = null;
+    let capaMapa = null;
+    let controlLeyenda = null;
+    let distribucion = null;
+    let cargando = false;
 
-    const colores = [
+    const coloresPickups = [
       "#ffffb2",
       "#fecc5c",
       "#fd8d3c",
@@ -123,12 +265,28 @@
       "#bd0026"
     ];
 
-    function obtenerValor(propiedades, campo) {
-      const valor = Number(propiedades[campo]);
+    const coloresTaxis = [
+      "#edf8fb",
+      "#b2e2e2",
+      "#66c2a4",
+      "#2ca25f",
+      "#006d2c"
+    ];
 
-      return propiedades[campo] != null &&
-        propiedades[campo] !== "" &&
-        Number.isFinite(valor)
+    function obtenerValor(propiedades, campo) {
+      const original = propiedades[campo];
+
+      if (
+        original === null ||
+        original === undefined ||
+        original === ""
+      ) {
+        return null;
+      }
+
+      const valor = Number(original);
+
+      return Number.isFinite(valor) && valor >= 0
         ? valor
         : null;
     }
@@ -144,27 +302,126 @@
       });
     }
 
-    function estilo(feature, campo, cortes) {
-      const valor = obtenerValor(feature.properties, campo);
-
-      if (valor === null) {
-        return {
-          color: "#555",
-          weight: 1,
-          fillColor: "#bdbdbd",
-          fillOpacity: 0.7
-        };
-      }
+    function obtenerIndice(valor, cortes) {
+      if (valor === null || !cortes.length) return -1;
 
       let indice = cortes.findIndex(corte => valor <= corte);
 
       if (indice === -1) indice = 4;
 
+      return indice;
+    }
+
+    function escaparHTML(valor) {
+      return String(valor).replace(/[&<>"']/g, caracter => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      })[caracter]);
+    }
+
+    /*
+     * Calcula una distribución proporcional de taxis.
+     *
+     * 1. Cuota teórica = pick-ups de la zona / total de pick-ups
+     *    multiplicado por el total de taxis.
+     * 2. Asigna la parte entera de cada cuota.
+     * 3. Distribuye los taxis restantes por mayor resto decimal.
+     * 4. En caso de empate, prioriza la zona con más pick-ups.
+     *
+     * Las zonas sin datos no participan en el cálculo.
+     * Las zonas con cero pick-ups reciben cero taxis.
+     */
+    function calcularDistribucion(totalTaxis, campo) {
+      const zonas = datosGeoJSON.features.map((feature, indice) => ({
+        feature,
+        indice,
+        pickups: obtenerValor(feature.properties, campo)
+      }));
+
+      const zonasConDato = zonas.filter(
+        zona => zona.pickups !== null
+      );
+
+      const totalPickups = zonasConDato.reduce(
+        (suma, zona) => suma + zona.pickups,
+        0
+      );
+
+      const porZona = new Map();
+
+      zonas.forEach(zona => {
+        porZona.set(
+          zona.feature,
+          zona.pickups === null ? null : 0
+        );
+      });
+
+      if (totalPickups === 0 || totalTaxis === 0) {
+        return {
+          porZona,
+          totalPickups,
+          totalAsignados: 0,
+          totalTaxis,
+          zonasConDemanda: zonasConDato.filter(
+            zona => zona.pickups > 0
+          ).length
+        };
+      }
+
+      const elegibles = zonasConDato.filter(
+        zona => zona.pickups > 0
+      );
+
+      const reparto = elegibles.map(zona => {
+        const cuota =
+          (zona.pickups / totalPickups) * totalTaxis;
+
+        const base = Math.floor(cuota);
+
+        return {
+          ...zona,
+          base,
+          resto: cuota - base
+        };
+      });
+
+      const asignadosIniciales = reparto.reduce(
+        (suma, zona) => suma + zona.base,
+        0
+      );
+
+      const sobrantes = totalTaxis - asignadosIniciales;
+
+      // Los mayores restos reciben primero los taxis restantes.
+      // Los empates se resuelven priorizando más pick-ups.
+      reparto.sort((a, b) =>
+        (b.resto - a.resto) ||
+        (b.pickups - a.pickups) ||
+        (a.indice - b.indice)
+      );
+
+      for (let i = 0; i < sobrantes; i++) {
+        reparto[i].base += 1;
+      }
+
+      reparto.forEach(zona => {
+        porZona.set(zona.feature, zona.base);
+      });
+
+      const totalAsignados = reparto.reduce(
+        (suma, zona) => suma + zona.base,
+        0
+      );
+
       return {
-        color: "#555",
-        weight: 0.7,
-        fillColor: colores[indice],
-        fillOpacity: 0.75
+        porZona,
+        totalPickups,
+        totalAsignados,
+        totalTaxis,
+        zonasConDemanda: elegibles.length
       };
     }
 
@@ -172,40 +429,111 @@
       if (!datosGeoJSON) return;
 
       const campo = selector.value;
+      const modo = selectorModo.value;
+
+      if (modo === "taxis" && !distribucion) {
+        estado.textContent =
+          "Enter the fleet size and calculate the distribution first.";
+        resumen.textContent = "";
+        return;
+      }
+
+      const obtenerValorVisual = feature => {
+        if (modo === "taxis") {
+          return distribucion.porZona.get(feature) ?? null;
+        }
+
+        return obtenerValor(feature.properties, campo);
+      };
 
       const valores = datosGeoJSON.features
-        .map(f => obtenerValor(f.properties, campo))
-        .filter(v => v !== null);
+        .map(obtenerValorVisual)
+        .filter(valor => valor !== null);
 
       const cortes = crearCortes(valores);
 
-      if (capaMapa) mapa.removeLayer(capaMapa);
+      const colores = modo === "taxis"
+        ? coloresTaxis
+        : coloresPickups;
+
+      if (capaMapa) {
+        mapa.removeLayer(capaMapa);
+      }
 
       capaMapa = L.geoJSON(datosGeoJSON, {
-        style: feature => estilo(feature, campo, cortes),
+        style: feature => {
+          const valor = obtenerValorVisual(feature);
+
+          if (valor === null) {
+            return {
+              color: "#555",
+              weight: 1,
+              fillColor: "#bdbdbd",
+              fillOpacity: 0.7
+            };
+          }
+
+          const indice = obtenerIndice(valor, cortes);
+
+          return {
+            color: "#555",
+            weight: 0.7,
+            fillColor: colores[Math.max(0, indice)],
+            fillOpacity: 0.75
+          };
+        },
 
         onEachFeature: (feature, layer) => {
-          const p = feature.properties;
-          const nombre = p.name ?? "Zona sin nombre";
-          const valor = obtenerValor(p, campo);
+          const propiedades = feature.properties;
+          const nombre = propiedades.name ?? "Zona sin nombre";
+          const pickups = obtenerValor(propiedades, campo);
 
-          layer.bindPopup(
-            "<b>" + nombre + "</b><br>" +
-            "Hour: " + campo.replace(".", ":") + "<br>" +
-            "Number of Pick-Up: " +
-            (valor === null ? "Sin datos" : valor)
-          );
+          let contenido =
+            "<b>" + escaparHTML(nombre) + "</b><br>" +
+            "Hora: " + campo.replace(".", ":") + "<br>" +
+            "Number of Pick-Ups: " +
+            (pickups === null ? "Sin datos" : pickups);
+
+          if (distribucion) {
+            const taxis = distribucion.porZona.get(feature);
+
+            contenido +=
+              "<br>Recommended taxis: " +
+              (taxis === null || taxis === undefined
+                ? "Sin datos"
+                : taxis);
+
+            if (taxis !== null && taxis !== undefined) {
+              const porcentaje = distribucion.totalTaxis > 0
+                ? (taxis / distribucion.totalTaxis) * 100
+                : 0;
+
+              contenido +=
+                "<br>Fleet share: " +
+                porcentaje.toFixed(2) + "%";
+            }
+          }
+
+          layer.bindPopup(contenido);
         }
       }).addTo(mapa);
 
-      if (controlLeyenda) mapa.removeControl(controlLeyenda);
+      if (controlLeyenda) {
+        mapa.removeControl(controlLeyenda);
+      }
 
-      controlLeyenda = L.control({ position: "bottomright" });
+      controlLeyenda = L.control({
+        position: "bottomright"
+      });
 
       controlLeyenda.onAdd = function () {
         const div = L.DomUtil.create("div", "leyenda");
 
-        let html = "<b>Number of Pick-Up · " +
+        const titulo = modo === "taxis"
+          ? "Taxis recomendados"
+          : "Number of Pick-Up";
+
+        let html = "<b>" + titulo + " · " +
           campo.replace(".", ":") + "</b><br>";
 
         for (let i = 0; i < 5; i++) {
@@ -228,16 +556,42 @@
         }
 
         div.innerHTML = html;
+        L.DomEvent.disableClickPropagation(div);
         return div;
       };
 
       controlLeyenda.addTo(mapa);
 
-      estado.textContent =
-        "Data updated: " + valores.length;
+      if (distribucion) {
+        const sinAsignar =
+          distribucion.totalTaxis - distribucion.totalAsignados;
+
+        resumen.textContent =
+          "Flota disponible: " + distribucion.totalTaxis +
+          " | Taxis asignados: " + distribucion.totalAsignados +
+          " | Sin asignar: " + sinAsignar;
+
+        if (distribucion.totalPickups === 0) {
+          estado.textContent =
+            "No hay pick-ups válidos para la hora seleccionada.";
+        } else {
+          estado.textContent =
+            "Distribución calculada correctamente.";
+        }
+      } else {
+        resumen.textContent = "";
+        estado.textContent =
+          "Datos cargados. Selecciona una hora o calcula la distribución.";
+      }
     }
 
-    async function iniciar() {
+    async function cargarDatos() {
+      if (cargando) return;
+
+      cargando = true;
+      botonRecargar.disabled = true;
+      estado.textContent = "Cargando datos de QGIS Cloud...";
+
       try {
         const parametros = new URLSearchParams({
           service: "WFS",
@@ -262,27 +616,86 @@
         }
 
         datosGeoJSON = datos;
+
+        // La distribución anterior deja de ser válida
+        // después de descargar datos nuevos.
+        distribucion = null;
+        selectorModo.value = "pickups";
+
         actualizarMapa();
 
         const limites = capaMapa.getBounds();
 
         if (limites.isValid()) {
-          mapa.fitBounds(limites, { padding: [15, 15] });
+          mapa.fitBounds(limites, {
+            padding: [15, 15]
+          });
         } else {
           mapa.setView([21.4, 39.8], 10);
         }
 
-        selector.addEventListener("change", actualizarMapa);
+        estado.textContent =
+          "Datos cargados correctamente desde QGIS Cloud.";
 
       } catch (error) {
         console.error(error);
 
         estado.textContent =
-          "No se pudieron cargar los datos. Comprueba la conexión WFS y los permisos CORS de QGISCloud.";
+          "No se pudieron cargar los datos. Comprueba el servicio WFS y los permisos CORS de QGIS Cloud.";
+
+      } finally {
+        cargando = false;
+        botonRecargar.disabled = false;
       }
     }
 
-    iniciar();
+    botonCalcular.addEventListener("click", () => {
+      if (!datosGeoJSON) {
+        estado.textContent =
+          "Espera a que se carguen los datos antes de calcular.";
+        return;
+      }
+
+      const texto = flotaInput.value.trim();
+      const total = Number(texto);
+
+      if (
+        texto === "" ||
+        !Number.isSafeInteger(total) ||
+        total < 0
+      ) {
+        estado.textContent =
+          "Introduce un número entero de taxis igual o superior a cero.";
+        return;
+      }
+
+      distribucion = calcularDistribucion(
+        total,
+        selector.value
+      );
+
+      selectorModo.value = "taxis";
+
+      actualizarMapa();
+    });
+
+    selector.addEventListener("change", () => {
+      if (distribucion) {
+        // Recalcular con la misma flota para la nueva hora.
+        distribucion = calcularDistribucion(
+          distribucion.totalTaxis,
+          selector.value
+        );
+      }
+
+      actualizarMapa();
+    });
+
+    selectorModo.addEventListener("change", actualizarMapa);
+
+    botonRecargar.addEventListener("click", cargarDatos);
+
+    cargarDatos();
   </script>
 </body>
 </html>
