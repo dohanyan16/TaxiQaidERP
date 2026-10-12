@@ -85,7 +85,7 @@
 
     const mapa = L.map("map");
 
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    var satelite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
       attribution: "Tiles &copy; Esri",
       maxZoom: 19
     }).addTo(mapa);
