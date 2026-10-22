@@ -241,15 +241,16 @@
     const resumen = document.getElementById("resumen");
 
     for (let h = 0; h < 24; h++) {
-      const campo = String(h).padStart(2, "0") + ".00";
-      const opcion = document.createElement("option");
+  const hora = String(h).padStart(2, "0");
+  const campo = hora + "_00";
 
-      opcion.value = campo;
-      opcion.textContent =
-        String(h).padStart(2, "0") + ":00";
+  const opcion = document.createElement("option");
 
-      selector.appendChild(opcion);
-    }
+  opcion.value = campo;
+  opcion.textContent = hora + ":00";
+
+  selector.appendChild(opcion);
+}
 
     let datosGeoJSON = null;
     let capaMapa = null;
@@ -490,7 +491,7 @@
 
           let contenido =
             "<b>" + escaparHTML(nombre) + "</b><br>" +
-            "Hora: " + campo.replace(".", ":") + "<br>" +
+            "Hora: " + campo.replace("_", ":") + "<br>" +
             "Number of Trips: " +
             (pickups === null ? "Sin datos" : pickups);
 
@@ -534,7 +535,7 @@
           : "Number of Trips";
 
         let html = "<b>" + titulo + " · " +
-          campo.replace(".", ":") + "</b><br>";
+          campo.replace("_", ":") + "</b><br>";
 
         for (let i = 0; i < 5; i++) {
           let etiqueta;
