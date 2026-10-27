@@ -272,16 +272,42 @@
       position: relative;
     }
 
+    .input-with-btn {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-with-btn input {
+      margin-bottom: 0 !important;
+      padding-right: 40px;
+    }
+
+    .dropdown-arrow-btn {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 6px;
+      transition: color 0.2s;
+    }
+
+    .dropdown-arrow-btn:hover {
+      color: var(--primary);
+    }
+
     /* Custom Dropdown List matching input width with scroll */
     .custom-dropdown {
       position: absolute;
-      top: calc(100% - 12px);
+      top: calc(100% + 4px);
       left: 0;
       right: 0;
       background: #ffffff;
       border: 1px solid #ccc;
-      border-top: none;
-      border-radius: 0 0 8px 8px;
+      border-radius: 8px;
       max-height: 160px;
       overflow-y: auto;
       z-index: 1000;
@@ -463,21 +489,27 @@
           <div class="card">
             <h2>Driver Lookup</h2>
             <p style="margin-top: 5px; margin-bottom: 20px; color: var(--text-muted);">
-              Type Iqama or Driver Name to filter options and view details.
+              Type Iqama or Driver Name, or click the dropdown arrow to view all records.
             </p>
             
             <div class="search-row">
               <!-- Iqama Search Wrapper -->
               <div class="search-wrapper">
                 <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Search by Iqama</label>
-                <input type="text" id="driver-iqama-input" placeholder="Type Iqama..." autocomplete="off">
+                <div class="input-with-btn">
+                  <input type="text" id="driver-iqama-input" placeholder="Type Iqama..." autocomplete="off">
+                  <button type="button" id="toggle-iqama-btn" class="dropdown-arrow-btn">▼</button>
+                </div>
                 <div id="iqama-dropdown" class="custom-dropdown"></div>
               </div>
 
               <!-- Name Search Wrapper -->
               <div class="search-wrapper">
                 <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Search by Driver Name</label>
-                <input type="text" id="driver-name-input" placeholder="Type driver name..." autocomplete="off">
+                <div class="input-with-btn">
+                  <input type="text" id="driver-name-input" placeholder="Type driver name..." autocomplete="off">
+                  <button type="button" id="toggle-name-btn" class="dropdown-arrow-btn">▼</button>
+                </div>
                 <div id="name-dropdown" class="custom-dropdown"></div>
               </div>
             </div>
@@ -789,6 +821,8 @@
 
     const iqamaInput = document.getElementById("driver-iqama-input");
     const nameInput = document.getElementById("driver-name-input");
+    const toggleIqamaBtn = document.getElementById("toggle-iqama-btn");
+    const toggleNameBtn = document.getElementById("toggle-name-btn");
     const iqamaDropdown = document.getElementById("iqama-dropdown");
     const nameDropdown = document.getElementById("name-dropdown");
     const profileContainer = document.getElementById("driver-profile-container");
@@ -831,6 +865,32 @@
 
       dropdownElement.style.display = "block";
     }
+
+    // Toggle Iqama Dropdown Button
+    toggleIqamaBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (iqamaDropdown.style.display === "block") {
+        hideDropdowns();
+      } else {
+        nameDropdown.style.display = "none";
+        const val = iqamaInput.value.trim().toLowerCase();
+        const matches = val === "" ? driversDatabase : driversDatabase.filter(d => d.iqama.toLowerCase().includes(val));
+        populateDropdown(iqamaDropdown, matches, 'iqama');
+      }
+    });
+
+    // Toggle Name Dropdown Button
+    toggleNameBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (nameDropdown.style.display === "block") {
+        hideDropdowns();
+      } else {
+        iqamaDropdown.style.display = "none";
+        const val = nameInput.value.trim().toLowerCase();
+        const matches = val === "" ? driversDatabase : driversDatabase.filter(d => d.name.toLowerCase().includes(val));
+        populateDropdown(nameDropdown, matches, 'name');
+      }
+    });
 
     // Iqama Input Search & Bi-directional clearing
     iqamaInput.addEventListener("input", () => {
