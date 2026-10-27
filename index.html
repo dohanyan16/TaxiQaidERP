@@ -113,30 +113,55 @@
       min-height: 100vh;
     }
 
-    /* Sidebar */
+    /* Sidebar Styles & Collapse Transition */
     .sidebar {
       width: var(--sidebar-width);
       background-color: #1e1e2d;
       color: #ffffff;
       display: flex;
       flex-direction: column;
-      padding: 20px 0;
+      padding: 15px 0;
+      transition: width 0.3s ease;
+      position: relative;
     }
 
-    .sidebar-header {
-      padding: 0 20px 20px;
+    .sidebar.collapsed {
+      width: 70px;
+    }
+
+    .sidebar-toggle-container {
+      padding: 0 15px 15px;
       border-bottom: 1px solid #2d2d3f;
-      text-align: center;
+      display: flex;
+      justify-content: flex-end;
     }
 
-    .sidebar-header h2 {
-      color: var(--primary);
-      font-size: 20px;
+    .btn-collapse {
+      background: #323248;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      width: 35px;
+      height: 35px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .btn-collapse:hover {
+      background: var(--primary);
+    }
+
+    .sidebar.collapsed .sidebar-toggle-container {
+      justify-content: center;
     }
 
     .sidebar-menu {
       list-style: none;
-      margin-top: 20px;
+      margin-top: 15px;
       flex-grow: 1;
     }
 
@@ -148,6 +173,8 @@
       text-decoration: none;
       font-size: 15px;
       transition: all 0.3s;
+      white-space: nowrap;
+      overflow: hidden;
     }
 
     .sidebar-menu li a:hover, .sidebar-menu li.active a {
@@ -156,8 +183,12 @@
       border-left: 4px solid var(--primary);
     }
 
+    .sidebar.collapsed .nav-text {
+      display: none;
+    }
+
     .sidebar-footer {
-      padding: 20px;
+      padding: 15px;
       border-top: 1px solid #2d2d3f;
     }
 
@@ -170,24 +201,30 @@
       border-radius: 6px;
       cursor: pointer;
       font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
     }
 
     .btn-logout:hover {
       background: var(--danger);
     }
 
-    /* Main Content */
-    .main-content {
+    /* Right Wrapper (Header + Main Content) */
+    .right-wrapper {
       flex-grow: 1;
-      padding: 30px;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
+    /* Header Bar spanning full width of the right area */
     .header-bar {
+      background: #ffffff;
+      padding: 15px 30px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
       display: flex;
-      justify-content: flex-start;
       align-items: center;
-      margin-bottom: 30px;
+      height: 70px;
     }
 
     .header-left-group {
@@ -200,6 +237,13 @@
       height: 40px;
       width: auto;
       object-fit: contain;
+    }
+
+    /* Main Content */
+    .main-content {
+      flex-grow: 1;
+      padding: 30px;
+      overflow-y: auto;
     }
 
     /* Views / Sections */
@@ -259,38 +303,41 @@
 
   <!-- 2. MAIN SYSTEM VIEW (Hidden by default) -->
   <div id="erp-app" style="display: none;">
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <h2>Taxi Qaid</h2>
+    
+    <!-- Sidebar Navigation (Collapsible, no top header branding) -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-toggle-container">
+        <button id="sidebar-toggle" class="btn-collapse" title="Toggle Sidebar">◀</button>
       </div>
       <ul class="sidebar-menu">
         <li class="active" data-view="dashboard">
-          <a href="#">Dashboard</a>
+          <a href="#"><span class="nav-text">Dashboard</span></a>
         </li>
         <li data-view="pretrip">
-          <a href="#">Pre-Trip Check</a>
+          <a href="#"><span class="nav-text">Pre-Trip Check</span></a>
         </li>
         <li data-view="posttrip">
-          <a href="#">Post-Trip Check</a>
+          <a href="#"><span class="nav-text">Post-Trip Check</span></a>
         </li>
         <li data-view="breakdowns">
-          <a href="#">Breakdowns Tracker</a>
+          <a href="#"><span class="nav-text">Breakdowns Tracker</span></a>
         </li>
         <li data-view="maintenance">
-          <a href="#">Maintenance Tracker</a>
+          <a href="#"><span class="nav-text">Maintenance Tracker</span></a>
         </li>
         <li data-view="accidents">
-          <a href="#">Accident Tracker</a>
+          <a href="#"><span class="nav-text">Accident Tracker</span></a>
         </li>
       </ul>
       <div class="sidebar-footer">
-        <button id="logout-button" class="btn-logout">Sign Out</button>
+        <button id="logout-button" class="btn-logout"><span class="nav-text">Sign Out</span></button>
       </div>
     </aside>
 
-    <!-- Main Content Area -->
-    <main class="main-content">
+    <!-- Right Content Wrapper -->
+    <div class="right-wrapper">
+      
+      <!-- Top Header Bar -->
       <header class="header-bar">
         <div class="header-left-group">
           <img src="TaxiQaidLogo.jpg" alt="TaxiQaid Logo" class="header-logo">
@@ -298,67 +345,71 @@
         </div>
       </header>
 
-      <!-- Dashboard View -->
-      <section id="view-dashboard" class="view-section active">
-        <div class="card">
-          <h2>Welcome to Taxi Qaid ERP</h2>
-          <p style="margin-top: 10px; color: var(--text-muted);">
-            System interface initialized. Select a module from the sidebar navigation menu to begin.
-          </p>
-        </div>
-      </section>
+      <!-- Main Content Area -->
+      <main class="main-content">
 
-      <!-- Pre-Trip Check View -->
-      <section id="view-pretrip" class="view-section">
-        <div class="card">
-          <h2>Pre-Trip Check</h2>
-          <p style="margin-top: 10px; color: var(--text-muted);">
-            Module pending development...
-          </p>
-        </div>
-      </section>
+        <!-- Dashboard View -->
+        <section id="view-dashboard" class="view-section active">
+          <div class="card">
+            <h2>Welcome to Taxi Qaid ERP</h2>
+            <p style="margin-top: 10px; color: var(--text-muted);">
+              System interface initialized. Select a module from the sidebar navigation menu to begin.
+            </p>
+          </div>
+        </section>
 
-      <!-- Post-Trip Check View -->
-      <section id="view-posttrip" class="view-section">
-        <div class="card">
-          <h2>Post-Trip Check</h2>
-          <p style="margin-top: 10px; color: var(--text-muted);">
-            Module pending development...
-          </p>
-        </div>
-      </section>
+        <!-- Pre-Trip Check View -->
+        <section id="view-pretrip" class="view-section">
+          <div class="card">
+            <h2>Pre-Trip Check</h2>
+            <p style="margin-top: 10px; color: var(--text-muted);">
+              Module pending development...
+            </p>
+          </div>
+        </section>
 
-      <!-- Breakdowns Tracker View -->
-      <section id="view-breakdowns" class="view-section">
-        <div class="card">
-          <h2>Breakdowns Tracker</h2>
-          <p style="margin-top: 10px; color: var(--text-muted);">
-            Module pending development...
-          </p>
-        </div>
-      </section>
+        <!-- Post-Trip Check View -->
+        <section id="view-posttrip" class="view-section">
+          <div class="card">
+            <h2>Post-Trip Check</h2>
+            <p style="margin-top: 10px; color: var(--text-muted);">
+              Module pending development...
+            </p>
+          </div>
+        </section>
 
-      <!-- Maintenance Tracker View -->
-      <section id="view-maintenance" class="view-section">
-        <div class="card">
-          <h2>Maintenance Tracker</h2>
-          <p style="margin-top: 10px; color: var(--text-muted);">
-            Module pending development...
-          </p>
-        </div>
-      </section>
+        <!-- Breakdowns Tracker View -->
+        <section id="view-breakdowns" class="view-section">
+          <div class="card">
+            <h2>Breakdowns Tracker</h2>
+            <p style="margin-top: 10px; color: var(--text-muted);">
+              Module pending development...
+            </p>
+          </div>
+        </section>
 
-      <!-- Accident Tracker View -->
-      <section id="view-accidents" class="view-section">
-        <div class="card">
-          <h2>Accident Tracker</h2>
-          <p style="margin-top: 10px; color: var(--text-muted);">
-            Module pending development...
-          </p>
-        </div>
-      </section>
+        <!-- Maintenance Tracker View -->
+        <section id="view-maintenance" class="view-section">
+          <div class="card">
+            <h2>Maintenance Tracker</h2>
+            <p style="margin-top: 10px; color: var(--text-muted);">
+              Module pending development...
+            </p>
+          </div>
+        </section>
 
-    </main>
+        <!-- Accident Tracker View -->
+        <section id="view-accidents" class="view-section">
+          <div class="card">
+            <h2>Accident Tracker</h2>
+            <p style="margin-top: 10px; color: var(--text-muted);">
+              Module pending development...
+            </p>
+          </div>
+        </section>
+
+      </main>
+    </div>
   </div>
 
   <!-- Supabase Client JS Library -->
@@ -380,6 +431,14 @@
     const errorMessage = document.getElementById("error-message");
     const loginButton = document.getElementById("login-button");
     const logoutButton = document.getElementById("logout-button");
+    const sidebar = document.getElementById("sidebar");
+    const sidebarToggle = document.getElementById("sidebar-toggle");
+
+    // Sidebar Collapse/Expand Toggle Logic
+    sidebarToggle.addEventListener("click", () => {
+      sidebar.classList.toggle("collapsed");
+      sidebarToggle.textContent = sidebar.classList.contains("collapsed") ? "▶" : "◀";
+    });
 
     // Authentication Logic
     loginForm.addEventListener("submit", async function(e) {
@@ -452,7 +511,7 @@
 
         item.classList.add("active");
         document.getElementById(`view-${targetView}`).classList.add("active");
-        pageTitle.textContent = item.querySelector("a").textContent.trim();
+        pageTitle.textContent = item.querySelector(".nav-text").textContent.trim();
       });
     });
   </script>
