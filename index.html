@@ -120,7 +120,8 @@
       color: #ffffff;
       display: flex;
       flex-direction: column;
-      padding: 15px 0;
+      padding-top: 10px;
+      padding-bottom: 15px;
       transition: width 0.3s ease;
       position: relative;
     }
@@ -129,39 +130,35 @@
       width: 70px;
     }
 
-    .sidebar-toggle-container {
-      padding: 0 15px 15px;
-      border-bottom: 1px solid #2d2d3f;
-      display: flex;
-      justify-content: flex-end;
-    }
-
+    /* Floating Toggle Button */
     .btn-collapse {
       background: #323248;
       color: #ffffff;
       border: none;
       border-radius: 6px;
-      width: 35px;
-      height: 35px;
+      width: 28px;
+      height: 28px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s;
+      margin: 5px 15px 10px auto;
+      transition: background 0.2s, margin 0.3s;
+    }
+
+    .sidebar.collapsed .btn-collapse {
+      margin: 5px auto 10px auto;
     }
 
     .btn-collapse:hover {
       background: var(--primary);
     }
 
-    .sidebar.collapsed .sidebar-toggle-container {
-      justify-content: center;
-    }
-
+    /* Sidebar Menu Starting Right From Top */
     .sidebar-menu {
       list-style: none;
-      margin-top: 15px;
+      margin: 0;
       flex-grow: 1;
     }
 
@@ -304,11 +301,10 @@
   <!-- 2. MAIN SYSTEM VIEW (Hidden by default) -->
   <div id="erp-app" style="display: none;">
     
-    <!-- Sidebar Navigation (Collapsible, no top header branding) -->
+    <!-- Sidebar Navigation (Collapsible, starts directly from top) -->
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-toggle-container">
-        <button id="sidebar-toggle" class="btn-collapse" title="Toggle Sidebar">◀</button>
-      </div>
+      <button id="sidebar-toggle" class="btn-collapse" title="Toggle Sidebar">◀</button>
+      
       <ul class="sidebar-menu">
         <li class="active" data-view="dashboard">
           <a href="#"><span class="nav-text">Dashboard</span></a>
@@ -329,6 +325,7 @@
           <a href="#"><span class="nav-text">Accident Tracker</span></a>
         </li>
       </ul>
+
       <div class="sidebar-footer">
         <button id="logout-button" class="btn-logout"><span class="nav-text">Sign Out</span></button>
       </div>
@@ -337,7 +334,7 @@
     <!-- Right Content Wrapper -->
     <div class="right-wrapper">
       
-      <!-- Top Header Bar -->
+      <!-- Top Header Bar (Full width) -->
       <header class="header-bar">
         <div class="header-left-group">
           <img src="TaxiQaidLogo.jpg" alt="TaxiQaid Logo" class="header-logo">
