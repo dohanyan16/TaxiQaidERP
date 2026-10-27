@@ -259,6 +259,25 @@
       box-shadow: 0 2px 10px rgba(0,0,0,0.05);
       margin-bottom: 20px;
     }
+
+    /* Database Module Layout */
+    .db-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 900px) {
+      .db-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 
@@ -309,6 +328,9 @@
         <li class="active" data-view="dashboard">
           <a href="#"><span class="nav-text">Dashboard</span></a>
         </li>
+        <li data-view="database">
+          <a href="#"><span class="nav-text">Database</span></a>
+        </li>
         <li data-view="pretrip">
           <a href="#"><span class="nav-text">Pre-Trip Check</span></a>
         </li>
@@ -352,6 +374,85 @@
             <p style="margin-top: 10px; color: var(--text-muted);">
               System interface initialized. Select a module from the sidebar navigation menu to begin.
             </p>
+          </div>
+        </section>
+
+        <!-- Database View (Drivers & Taxis Management) -->
+        <section id="view-database" class="view-section">
+          <div class="db-grid">
+            
+            <!-- Taxi Fleet Management -->
+            <div class="card">
+              <h2>Taxi Fleet Management</h2>
+              <p style="margin-top: 5px; margin-bottom: 20px; color: var(--text-muted);">
+                Register and manage the 400 taxis in your fleet.
+              </p>
+
+              <form id="taxi-form" onsubmit="event.preventDefault(); alert('Taxi registered successfully.');">
+                <div class="form-row">
+                  <div>
+                    <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Taxi ID</label>
+                    <input type="text" id="db_taxi_id" placeholder="e.g. 401" required>
+                  </div>
+                  <div>
+                    <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">License Plate</label>
+                    <input type="text" id="db_taxi_plate" placeholder="e.g. 1234-ABC" required>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div>
+                    <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Vehicle Model</label>
+                    <input type="text" id="db_taxi_model" placeholder="e.g. Toyota Prius" required>
+                  </div>
+                  <div>
+                    <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Status</label>
+                    <select id="db_taxi_status" required>
+                      <option value="Active">Active</option>
+                      <option value="Maintenance">In Maintenance</option>
+                      <option value="Out of Service">Out of Service</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn-primary">Add Taxi to Fleet</button>
+              </form>
+            </div>
+
+            <!-- Drivers Management -->
+            <div class="card">
+              <h2>Drivers Management</h2>
+              <p style="margin-top: 5px; margin-bottom: 20px; color: var(--text-muted);">
+                Register and manage driver profiles.
+              </p>
+
+              <form id="driver-form" onsubmit="event.preventDefault(); alert('Driver registered successfully.');">
+                <div class="form-row">
+                  <div>
+                    <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Driver ID / Emp ID</label>
+                    <input type="text" id="db_driver_id" placeholder="e.g. DRV-089" required>
+                  </div>
+                  <div>
+                    <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Full Name</label>
+                    <input type="text" id="db_driver_name" placeholder="e.g. John Doe" required>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div>
+                    <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Phone Number</label>
+                    <input type="tel" id="db_driver_phone" placeholder="e.g. +34 600 000 000" required>
+                  </div>
+                  <div>
+                    <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">License Number</label>
+                    <input type="text" id="db_driver_license" placeholder="e.g. B-98765432" required>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn-primary">Add Driver</button>
+              </form>
+            </div>
+
           </div>
         </section>
 
