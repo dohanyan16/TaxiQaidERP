@@ -268,6 +268,45 @@
       margin-bottom: 20px;
     }
 
+    .search-wrapper {
+      position: relative;
+    }
+
+    /* Custom Dropdown List matching input width with scroll */
+    .custom-dropdown {
+      position: absolute;
+      top: calc(100% - 12px);
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid #ccc;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      max-height: 160px;
+      overflow-y: auto;
+      z-index: 1000;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+      display: none;
+    }
+
+    .custom-dropdown-item {
+      padding: 10px 14px;
+      font-size: 15px;
+      color: var(--text-main);
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      transition: background 0.15s;
+    }
+
+    .custom-dropdown-item:last-child {
+      border-bottom: none;
+    }
+
+    .custom-dropdown-item:hover {
+      background-color: #fdf2e9;
+      color: var(--primary);
+    }
+
     .profile-card {
       background: var(--card-bg);
       border-radius: 12px;
@@ -424,20 +463,22 @@
           <div class="card">
             <h2>Driver Lookup</h2>
             <p style="margin-top: 5px; margin-bottom: 20px; color: var(--text-muted);">
-              Search for a driver by Iqama or Name. Selecting one will auto-fill the other field.
+              Type Iqama or Driver Name to filter options and view details.
             </p>
             
             <div class="search-row">
-              <div>
+              <!-- Iqama Search Wrapper -->
+              <div class="search-wrapper">
                 <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Search by Iqama</label>
-                <input type="text" id="driver-iqama-input" list="iqama-list" placeholder="Type or select Iqama..." style="margin-bottom:0;">
-                <datalist id="iqama-list"></datalist>
+                <input type="text" id="driver-iqama-input" placeholder="Type Iqama..." autocomplete="off">
+                <div id="iqama-dropdown" class="custom-dropdown"></div>
               </div>
 
-              <div>
+              <!-- Name Search Wrapper -->
+              <div class="search-wrapper">
                 <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Search by Driver Name</label>
-                <input type="text" id="driver-name-input" list="name-list" placeholder="Type or select Name..." style="margin-bottom:0;">
-                <datalist id="name-list"></datalist>
+                <input type="text" id="driver-name-input" placeholder="Type driver name..." autocomplete="off">
+                <div id="name-dropdown" class="custom-dropdown"></div>
               </div>
             </div>
           </div>
@@ -720,58 +761,124 @@
         phone: "+966 55 987 6543",
         driver_id: "DRV-002",
         arrangement: "Independent Contractor",
-        license_date: "", // Cell is empty -> will render "Not Yet"
+        license_date: "", // Empty -> renders "Not Yet"
         shift: "Night Shift",
         car_plate: "4028-KSA",
+        status: "Active"
+      },
+      {
+        iqama: "2789012345",
+        name: "Ahmed Al-Farsi",
+        nationality: "Oman",
+        passport: "O1122334",
+        tid: "TID-903",
+        passport_exp: "2029-01-10",
+        iqama_issue: "2021-05-20",
+        dob: "1990-08-14",
+        iqama_exp: "2026-05-19",
+        work_start: "2021-06-01",
+        phone: "+966 56 444 3322",
+        driver_id: "DRV-003",
+        arrangement: "Company Car",
+        license_date: "2019-03-11",
+        shift: "Day Shift",
+        car_plate: "4055-KSA",
         status: "Active"
       }
     ];
 
     const iqamaInput = document.getElementById("driver-iqama-input");
     const nameInput = document.getElementById("driver-name-input");
-    const iqamaDatalist = document.getElementById("iqama-list");
-    const nameDatalist = document.getElementById("name-list");
+    const iqamaDropdown = document.getElementById("iqama-dropdown");
+    const nameDropdown = document.getElementById("name-dropdown");
     const profileContainer = document.getElementById("driver-profile-container");
 
-    // Populate Datalist options
-    function initDriverDropdowns() {
-      iqamaDatalist.innerHTML = "";
-      nameDatalist.innerHTML = "";
-
-      driversDatabase.forEach(d => {
-        const optIqama = document.createElement("option");
-        optIqama.value = d.iqama;
-        iqamaDatalist.appendChild(optIqama);
-
-        const optName = document.createElement("option");
-        optName.value = d.name;
-        nameDatalist.appendChild(optName);
-      });
+    // Helper to hide dropdowns
+    function hideDropdowns() {
+      iqamaDropdown.style.display = "none";
+      nameDropdown.style.display = "none";
     }
 
-    initDriverDropdowns();
+    // Close dropdowns when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".search-wrapper")) {
+        hideDropdowns();
+      }
+    });
 
-    // Event listener for Iqama search/selection
+    // Render Dropdown List Items
+    function populateDropdown(dropdownElement, items, type) {
+      dropdownElement.innerHTML = "";
+      if (items.length === 0) {
+        dropdownElement.style.display = "none";
+        return;
+      }
+
+      items.forEach(driver => {
+        const div = document.createElement("div");
+        div.className = "custom-dropdown-item";
+        div.textContent = type === 'iqama' ? `${driver.iqama} - ${driver.name}` : `${driver.name} (${driver.iqama})`;
+        
+        div.addEventListener("click", () => {
+          iqamaInput.value = driver.iqama;
+          nameInput.value = driver.name;
+          renderDriverProfile(driver);
+          hideDropdowns();
+        });
+
+        dropdownElement.appendChild(div);
+      });
+
+      dropdownElement.style.display = "block";
+    }
+
+    // Iqama Input Search & Bi-directional clearing
     iqamaInput.addEventListener("input", () => {
-      const val = iqamaInput.value.trim();
-      const match = driversDatabase.find(d => d.iqama === val);
+      const val = iqamaInput.value.trim().toLowerCase();
 
-      if (match) {
-        nameInput.value = match.name;
-        renderDriverProfile(match);
+      if (val === "") {
+        iqamaInput.value = "";
+        nameInput.value = "";
+        profileContainer.style.display = "none";
+        hideDropdowns();
+        return;
+      }
+
+      const matches = driversDatabase.filter(d => d.iqama.toLowerCase().includes(val));
+      populateDropdown(iqamaDropdown, matches, 'iqama');
+
+      // Check for exact match
+      const exactMatch = driversDatabase.find(d => d.iqama.toLowerCase() === val);
+      if (exactMatch) {
+        nameInput.value = exactMatch.name;
+        renderDriverProfile(exactMatch);
+        hideDropdowns();
       } else {
         profileContainer.style.display = "none";
       }
     });
 
-    // Event listener for Driver Name search/selection
+    // Name Input Search & Bi-directional clearing
     nameInput.addEventListener("input", () => {
-      const val = nameInput.value.trim();
-      const match = driversDatabase.find(d => d.name.toLowerCase() === val.toLowerCase());
+      const val = nameInput.value.trim().toLowerCase();
 
-      if (match) {
-        iqamaInput.value = match.iqama;
-        renderDriverProfile(match);
+      if (val === "") {
+        nameInput.value = "";
+        iqamaInput.value = "";
+        profileContainer.style.display = "none";
+        hideDropdowns();
+        return;
+      }
+
+      const matches = driversDatabase.filter(d => d.name.toLowerCase().includes(val));
+      populateDropdown(nameDropdown, matches, 'name');
+
+      // Check for exact match
+      const exactMatch = driversDatabase.find(d => d.name.toLowerCase() === val);
+      if (exactMatch) {
+        iqamaInput.value = exactMatch.iqama;
+        renderDriverProfile(exactMatch);
+        hideDropdowns();
       } else {
         profileContainer.style.display = "none";
       }
@@ -808,7 +915,7 @@
     // Edit button click handler
     document.getElementById("edit-driver-btn").addEventListener("click", () => {
       const currentName = nameInput.value;
-      alert(`Edit mode for ${currentName}. This feature will send updates directly to Google Sheets upon backend integration.`);
+      alert(`Edit mode for ${currentName}. Changes will update Google Sheets and the database upon backend integration.`);
     });
   </script>
 </body>
