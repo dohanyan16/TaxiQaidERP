@@ -62,12 +62,6 @@
       margin: 0 auto 25px;
     }
 
-    .header-logo {
-      height: 40px;
-      width: auto;
-      object-fit: contain;
-    }
-
     input, select {
       width: 100%;
       padding: 12px;
@@ -188,20 +182,21 @@
 
     .header-bar {
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-start;
       align-items: center;
       margin-bottom: 30px;
     }
 
-    .header-right {
+    .header-left-group {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 15px;
     }
 
-    .user-info {
-      font-size: 14px;
-      color: var(--text-muted);
+    .header-logo {
+      height: 40px;
+      width: auto;
+      object-fit: contain;
     }
 
     /* Views / Sections */
@@ -279,12 +274,9 @@
     <!-- Main Content Area -->
     <main class="main-content">
       <header class="header-bar">
-        <h1 id="page-title">Dashboard</h1>
-        <div class="header-right">
-          <div class="user-info">
-            Logged in as: <strong id="user-display-name">Manager</strong>
-          </div>
+        <div class="header-left-group">
           <img src="TaxiQaidLogo.jpg" alt="TaxiQaid Logo" class="header-logo">
+          <h1 id="page-title">Dashboard</h1>
         </div>
       </header>
 
@@ -355,7 +347,6 @@
         }
 
         // Successfully logged in
-        document.getElementById("user-display-name").textContent = username;
         loginScreen.style.display = "none";
         erpApp.style.display = "flex";
 
