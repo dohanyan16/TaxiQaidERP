@@ -371,6 +371,12 @@
       color: var(--text-main);
       word-break: break-word;
     }
+
+    .status-badge {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 5px;
+    }
   </style>
 </head>
 
@@ -488,11 +494,12 @@
           <!-- Driver Search Area -->
           <div class="card">
             <h2>Driver Lookup</h2>
-            <p style="margin-top: 5px; margin-bottom: 20px; color: var(--text-muted);">
-              Type Iqama or Full Name, or click the dropdown arrow to view all records.
+            <p style="margin-top: 5px; margin-bottom: 10px; color: var(--text-muted);">
+              Type Iqama or Full Name, or click the dropdown arrow to view records.
             </p>
+            <div id="sync-status" class="status-badge">Connecting to Google Sheets...</div>
             
-            <div class="search-row">
+            <div class="search-row" style="margin-top: 15px;">
               <!-- Iqama Search Wrapper -->
               <div class="search-wrapper">
                 <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Search by Iqama Number</label>
@@ -718,6 +725,9 @@
         // Successfully logged in
         loginScreen.style.display = "none";
         erpApp.style.display = "flex";
+        
+        // Fetch Drivers Data upon login
+        fetchDriversFromGoogleSheets();
 
       } catch (error) {
         console.error("Login error:", error);
@@ -753,71 +763,18 @@
         item.classList.add("active");
         document.getElementById(`view-${targetView}`).classList.add("active");
         pageTitle.textContent = item.querySelector(".nav-text").textContent.trim();
+
+        if (targetView === "drivers" && driversDatabase.length === 0) {
+          fetchDriversFromGoogleSheets();
+        }
       });
     });
 
-    // --- DRIVERS MANAGEMENT LOGIC ---
+    // --- DRIVERS MANAGEMENT & GOOGLE SHEETS INTEGRATION ---
 
-    // Temporary local dataset with standardized Google Sheet keys
-    let driversDatabase = [
-      {
-        "Iqama Number": "2345678901",
-        "Full Name": "Mohammed Al-Harbi",
-        "Nationality": "Saudi Arabia",
-        "Passport Number": "N1234567",
-        "TID": "TID-901",
-        "Passport Expiry Date": "2028-05-15",
-        "Iqama Issue Date": "2020-01-10",
-        "Date of Birth": "1988-11-22",
-        "Iqama Expiry Date": "2027-01-09",
-        "Employment Start Date": "2021-03-01",
-        "Phone Number": "+966 50 123 4567",
-        "Driver ID": "DRV-001",
-        "Arrangement": "Company Car",
-        "KSA Driving License Date": "2018-09-12",
-        "Shift": "Day Shift",
-        "Car Plate": "4012-KSA",
-        "Status": "Active"
-      },
-      {
-        "Iqama Number": "2456789012",
-        "Full Name": "Tariq Mansoor",
-        "Nationality": "Pakistan",
-        "Passport Number": "P9876543",
-        "TID": "TID-902",
-        "Passport Expiry Date": "2026-11-30",
-        "Iqama Issue Date": "2022-06-18",
-        "Date of Birth": "1994-04-05",
-        "Iqama Expiry Date": "2026-06-17",
-        "Employment Start Date": "2022-07-10",
-        "Phone Number": "+966 55 987 6543",
-        "Driver ID": "DRV-002",
-        "Arrangement": "Independent Contractor",
-        "KSA Driving License Date": "", // Empty -> renders "Not Yet"
-        "Shift": "Night Shift",
-        "Car Plate": "4028-KSA",
-        "Status": "Active"
-      },
-      {
-        "Iqama Number": "2789012345",
-        "Full Name": "Ahmed Al-Farsi",
-        "Nationality": "Oman",
-        "Passport Number": "O1122334",
-        "TID": "TID-903",
-        "Passport Expiry Date": "2029-01-10",
-        "Iqama Issue Date": "2021-05-20",
-        "Date of Birth": "1990-08-14",
-        "Iqama Expiry Date": "2026-05-19",
-        "Employment Start Date": "2021-06-01",
-        "Phone Number": "+966 56 444 3322",
-        "Driver ID": "DRV-003",
-        "Arrangement": "Company Car",
-        "KSA Driving License Date": "2019-03-11",
-        "Shift": "Day Shift",
-        "Car Plate": "4055-KSA",
-        "Status": "Active"
-      }
-    ];
+    const GOOGLE_SHEET_DRIVERS_URL = "https://script.google.com/macros/s/AKfycby7-NkH3HuZF2dXsLf0WGCV76bdxSZ1YXZsbs785qrgIAoBA9eal7DIRYPWypwWRPpQkA/exec";
+
+    let driversDatabase = [];
 
     const iqamaInput = document.getElementById("driver-iqama-input");
     const nameInput = document.getElementById("driver-name-input");
@@ -826,6 +783,28 @@
     const iqamaDropdown = document.getElementById("iqama-dropdown");
     const nameDropdown = document.getElementById("name-dropdown");
     const profileContainer = document.getElementById("driver-profile-container");
+    const syncStatus = document.getElementById("sync-status");
+
+    // Fetch live drivers data from Google Sheets
+    async function fetchDriversFromGoogleSheets() {
+      try {
+        syncStatus.textContent = "🔄 Syncing database with Google Sheets...";
+        syncStatus.style.color = "#0284c7";
+
+        const response = await fetch(GOOGLE_SHEET_DRIVERS_URL);
+        if (!response.ok) throw new Error("Network response was not ok");
+        
+        const data = await response.json();
+        driversDatabase = data;
+
+        syncStatus.textContent = `✅ Synced ${driversDatabase.length} driver record(s) from Google Sheets.`;
+        syncStatus.style.color = "#2e7d32";
+      } catch (err) {
+        console.error("Error fetching drivers:", err);
+        syncStatus.textContent = "❌ Failed to load drivers from Google Sheets. Check console or URL.";
+        syncStatus.style.color = "#c62828";
+      }
+    }
 
     // Helper to hide dropdowns
     function hideDropdowns() {
@@ -849,13 +828,16 @@
       }
 
       items.forEach(driver => {
+        const iqamaVal = String(driver["Iqama Number"] || "");
+        const nameVal = String(driver["Full Name"] || "");
+
         const div = document.createElement("div");
         div.className = "custom-dropdown-item";
-        div.textContent = type === 'iqama' ? `${driver["Iqama Number"]} - ${driver["Full Name"]}` : `${driver["Full Name"]} (${driver["Iqama Number"]})`;
+        div.textContent = type === 'iqama' ? `${iqamaVal} - ${nameVal}` : `${nameVal} (${iqamaVal})`;
         
         div.addEventListener("click", () => {
-          iqamaInput.value = driver["Iqama Number"];
-          nameInput.value = driver["Full Name"];
+          iqamaInput.value = iqamaVal;
+          nameInput.value = nameVal;
           renderDriverProfile(driver);
           hideDropdowns();
         });
@@ -874,7 +856,7 @@
       } else {
         nameDropdown.style.display = "none";
         const val = iqamaInput.value.trim().toLowerCase();
-        const matches = val === "" ? driversDatabase : driversDatabase.filter(d => d["Iqama Number"].toLowerCase().includes(val));
+        const matches = val === "" ? driversDatabase : driversDatabase.filter(d => String(d["Iqama Number"] || "").toLowerCase().includes(val));
         populateDropdown(iqamaDropdown, matches, 'iqama');
       }
     });
@@ -887,7 +869,7 @@
       } else {
         iqamaDropdown.style.display = "none";
         const val = nameInput.value.trim().toLowerCase();
-        const matches = val === "" ? driversDatabase : driversDatabase.filter(d => d["Full Name"].toLowerCase().includes(val));
+        const matches = val === "" ? driversDatabase : driversDatabase.filter(d => String(d["Full Name"] || "").toLowerCase().includes(val));
         populateDropdown(nameDropdown, matches, 'name');
       }
     });
@@ -904,13 +886,12 @@
         return;
       }
 
-      const matches = driversDatabase.filter(d => d["Iqama Number"].toLowerCase().includes(val));
+      const matches = driversDatabase.filter(d => String(d["Iqama Number"] || "").toLowerCase().includes(val));
       populateDropdown(iqamaDropdown, matches, 'iqama');
 
-      // Check for exact match
-      const exactMatch = driversDatabase.find(d => d["Iqama Number"].toLowerCase() === val);
+      const exactMatch = driversDatabase.find(d => String(d["Iqama Number"] || "").toLowerCase() === val);
       if (exactMatch) {
-        nameInput.value = exactMatch["Full Name"];
+        nameInput.value = exactMatch["Full Name"] || "";
         renderDriverProfile(exactMatch);
         hideDropdowns();
       } else {
@@ -930,13 +911,12 @@
         return;
       }
 
-      const matches = driversDatabase.filter(d => d["Full Name"].toLowerCase().includes(val));
+      const matches = driversDatabase.filter(d => String(d["Full Name"] || "").toLowerCase().includes(val));
       populateDropdown(nameDropdown, matches, 'name');
 
-      // Check for exact match
-      const exactMatch = driversDatabase.find(d => d["Full Name"].toLowerCase() === val);
+      const exactMatch = driversDatabase.find(d => String(d["Full Name"] || "").toLowerCase() === val);
       if (exactMatch) {
-        iqamaInput.value = exactMatch["Iqama Number"];
+        iqamaInput.value = exactMatch["Iqama Number"] || "";
         renderDriverProfile(exactMatch);
         hideDropdowns();
       } else {
@@ -944,9 +924,9 @@
       }
     });
 
-    // Render Driver Profile Card fields using standardized keys
+    // Render Driver Profile Card fields
     function renderDriverProfile(driver) {
-      document.getElementById("profile-driver-name").textContent = driver["Full Name"] + " - Profile";
+      document.getElementById("profile-driver-name").textContent = (driver["Full Name"] || "Driver") + " - Profile";
       document.getElementById("val-iqama").textContent = driver["Iqama Number"] || "-";
       document.getElementById("val-name").textContent = driver["Full Name"] || "-";
       document.getElementById("val-nationality").textContent = driver["Nationality"] || "-";
@@ -961,9 +941,9 @@
       document.getElementById("val-driver-id").textContent = driver["Driver ID"] || "-";
       document.getElementById("val-arrangement").textContent = driver["Arrangement"] || "-";
       
-      // KSA Driving License Date logic ("Not Yet" if empty)
+      const licenseVal = driver["KSA Driving License Date"];
       document.getElementById("val-license-date").textContent = 
-        (driver["KSA Driving License Date"] && driver["KSA Driving License Date"].trim() !== "") ? driver["KSA Driving License Date"] : "Not Yet";
+        (licenseVal && String(licenseVal).trim() !== "") ? licenseVal : "Not Yet";
 
       document.getElementById("val-shift").textContent = driver["Shift"] || "-";
       document.getElementById("val-car-plate").textContent = driver["Car Plate"] || "-";
