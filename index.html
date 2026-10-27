@@ -1,139 +1,460 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taxi Qaid - ERP Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taxi Qaid</title>
+  
+  <!-- Client-side PDF Generation Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  
+  <style>
+    /* Global CSS Variables and Resets */
+    :root {
+      --primary: #F58220;
+      --primary-hover: #D96A10;
+      --bg-dark: #121212;
+      --bg-light: #f4f6f8;
+      --card-bg: #ffffff;
+      --text-main: #333333;
+      --text-muted: #666666;
+      --border-color: #e0e0e0;
+      --danger: #c62828;
+      --success: #2e7d32;
+      --sidebar-width: 250px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-light);
+      min-height: 100vh;
+    }
+
+    /* LOGIN SCREEN STYLES */
+    #login-screen {
+      min-height: 100vh;
+      background-color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-box {
+      background: white;
+      width: 380px;
+      max-width: calc(100% - 40px);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+
+    .logo {
+      display: block;
+      width: 220px;
+      max-width: 100%;
+      max-height: 120px;
+      height: auto;
+      object-fit: contain;
+      margin: 0 auto 25px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 18px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid var(--primary);
+      outline-offset: 1px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+
+    #error-message {
+      color: var(--danger);
+      font-size: 14px;
+      margin: 15px 0 0;
+    }
+
+    /* SYSTEM DASHBOARD STYLES */
+    #erp-app {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-width);
+      background-color: #1e1e2d;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 0;
+    }
+
+    .sidebar-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid #2d2d3f;
+      text-align: center;
+    }
+
+    .sidebar-header h2 {
+      color: var(--primary);
+      font-size: 20px;
+    }
+
+    .sidebar-menu {
+      list-style: none;
+      margin-top: 20px;
+      flex-grow: 1;
+    }
+
+    .sidebar-menu li a {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      color: #a2a3b7;
+      text-decoration: none;
+      font-size: 15px;
+      transition: all 0.3s;
+    }
+
+    .sidebar-menu li a:hover, .sidebar-menu li.active a {
+      background-color: #2b2b40;
+      color: var(--primary);
+      border-left: 4px solid var(--primary);
+    }
+
+    .sidebar-footer {
+      padding: 20px;
+      border-top: 1px solid #2d2d3f;
+    }
+
+    .btn-logout {
+      width: 100%;
+      padding: 10px;
+      background: #323248;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .btn-logout:hover {
+      background: var(--danger);
+    }
+
+    /* Main Content */
+    .main-content {
+      flex-grow: 1;
+      padding: 30px;
+      overflow-y: auto;
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+
+    .header-left-group {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .header-logo {
+      height: 40px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    /* Views / Sections */
+    .view-section {
+      display: none;
+    }
+
+    .view-section.active {
+      display: block;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 font-sans">
 
-    <div class="flex h-screen overflow-hidden">
-        
-        <!-- SIDEBAR DE NAVEGACIÓN -->
-        <div class="w-64 bg-slate-900 text-white flex flex-col">
-            <!-- Branding / Logo -->
-            <div class="p-5 flex items-center space-x-3 border-b border-slate-800">
-                <div class="bg-yellow-500 text-slate-900 font-bold p-2 rounded-lg text-xl">🚕</div>
-                <div>
-                    <h1 class="font-bold text-lg tracking-wider">TAXI QAID</h1>
-                    <p class="text-xs text-slate-400">Fleet Management ERP</p>
-                </div>
-            </div>
+<body>
 
-            <!-- Menú de Módulos -->
-            <nav class="flex-1 p-4 space-y-2">
-                <a href="#" onclick="switchModule('pretrip')" class="block py-2.5 px-4 rounded transition bg-yellow-500 text-slate-900 font-semibold">Pre-Trip Check</a>
-                <a href="#" onclick="switchModule('posttrip')" class="block py-2.5 px-4 rounded transition hover:bg-slate-800 text-slate-300">Post-Trip Check</a>
-                <a href="#" onclick="switchModule('breakdowns')" class="block py-2.5 px-4 rounded transition hover:bg-slate-800 text-slate-300">Breakdowns Tracker</a>
-                <a href="#" onclick="switchModule('maintenance')" class="block py-2.5 px-4 rounded transition hover:bg-slate-800 text-slate-300">Maintenance Tracker</a>
-                <a href="#" onclick="switchModule('accidents')" class="block py-2.5 px-4 rounded transition hover:bg-slate-800 text-slate-300">Accident Tracker</a>
-            </nav>
+  <!-- 1. LOGIN SCREEN VIEW -->
+  <div id="login-screen">
+    <div class="login-box">
+      <img src="TaxiQaidLogo.jpg" alt="TaxiQaid Logo" class="logo">
 
-            <!-- Info de Usuario / Rol -->
-            <div class="p-4 border-t border-slate-800 text-xs text-slate-400">
-                Rol actual: <span id="user-role-badge" class="text-yellow-400 font-bold">Inserter</span>
-            </div>
-        </div>
+      <form id="login-form">
+        <input 
+          type="text" 
+          id="username" 
+          placeholder="Username" 
+          autocomplete="username" 
+          autocapitalize="none" 
+          required
+        >
 
-        <!-- CONTENIDO PRINCIPAL -->
-        <div class="flex-1 flex flex-col overflow-y-auto">
-            
-            <!-- Header Superior -->
-            <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8">
-                <h2 id="module-title" class="text-xl font-bold text-slate-800">Pre-Trip Check (Revisión de Inicio)</h2>
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm text-slate-600">Conductor / Operador</span>
-                </div>
-            </header>
+        <input 
+          type="password" 
+          id="password" 
+          placeholder="Password" 
+          autocomplete="current-password" 
+          required
+        >
 
-            <!-- Área de Formularios / Vistas -->
-            <main class="p-8">
-                
-                <!-- MÓDULO 1: PRE-TRIP CHECK (Formulario) -->
-                <div id="module-pretrip" class="module-view bg-white rounded-xl shadow-md p-6 max-w-3xl mx-auto">
-                    <h3 class="text-lg font-semibold text-slate-700 mb-4 border-b pb-2">Nuevo Registro de Inspección Previa</h3>
-                    
-                    <form id="pretrip-form" onsubmit="handlePreTripSubmit(event)" class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-600">Número de Taxi (ID)</label>
-                                <input type="text" id="taxi_id" required placeholder="Ej: 401" class="mt-1 w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-600">Kilometraje Actual</label>
-                                <input type="number" id="mileage" required placeholder="Ej: 45200" class="mt-1 w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none">
-                            </div>
-                        </div>
+        <button id="login-button" class="btn-primary" type="submit">
+          Sign In
+        </button>
 
-                        <div class="grid grid-cols-3 gap-4 pt-2">
-                            <label class="flex items-center space-x-2 cursor-pointer bg-gray-50 p-3 rounded-lg border">
-                                <input type="checkbox" id="check_tires" class="w-4 h-4 text-yellow-500 rounded">
-                                <span class="text-sm font-medium text-slate-700">Estado de Neumáticos</span>
-                            </label>
-                            <label class="flex items-center space-x-2 cursor-pointer bg-gray-50 p-3 rounded-lg border">
-                                <input type="checkbox" id="check_brakes" class="w-4 h-4 text-yellow-500 rounded">
-                                <span class="text-sm font-medium text-slate-700">Frenos y Dirección</span>
-                            </label>
-                            <label class="flex items-center space-x-2 cursor-pointer bg-gray-50 p-3 rounded-lg border">
-                                <input type="checkbox" id="check_lights" class="w-4 h-4 text-yellow-500 rounded">
-                                <span class="text-sm font-medium text-slate-700">Luces e Intermitentes</span>
-                            </label>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-slate-600 mt-2">Observaciones o Daños Previos</label>
-                            <textarea id="notes" rows="3" placeholder="Indique cualquier incidencia..." class="mt-1 w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none"></textarea>
-                        </div>
-
-                        <div class="flex justify-end space-x-4 pt-4 border-t">
-                            <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold px-6 py-2.5 rounded-lg shadow transition">
-                                Guardar y Generar PDF
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- AQUí IRÁN LOS DEMÁS MÓDULOS (Ocultos por defecto) -->
-                <div id="module-posttrip" class="module-view hidden bg-white rounded-xl shadow-md p-6 max-w-3xl mx-auto">
-                    <h3 class="text-lg font-semibold text-slate-700">Módulo Post-Trip Check en desarrollo...</h3>
-                </div>
-                <div id="module-breakdowns" class="module-view hidden bg-white rounded-xl shadow-md p-6 max-w-3xl mx-auto">
-                    <h3 class="text-lg font-semibold text-slate-700">Módulo Breakdowns Tracker en desarrollo...</h3>
-                </div>
-                <div id="module-maintenance" class="module-view hidden bg-white rounded-xl shadow-md p-6 max-w-3xl mx-auto">
-                    <h3 class="text-lg font-semibold text-slate-700">Módulo Maintenance Tracker en desarrollo...</h3>
-                </div>
-                <div id="module-accidents" class="module-view hidden bg-white rounded-xl shadow-md p-6 max-w-3xl mx-auto">
-                    <h3 class="text-lg font-semibold text-slate-700">Módulo Accident Tracker en desarrollo...</h3>
-                </div>
-
-            </main>
-        </div>
+        <p id="error-message" role="alert" hidden>
+          Invalid username or password.
+        </p>
+      </form>
     </div>
+  </div>
 
-    <script>
-        // Función para cambiar entre módulos en la interfaz
-        function switchModule(moduleName) {
-            document.querySelectorAll('.module-view').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`module-${moduleName}`).classList.remove('hidden');
-            
-            // Cambiar títulos dinámicos o estilos del menú si se desea
+  <!-- 2. MAIN SYSTEM VIEW (Hidden by default) -->
+  <div id="erp-app" style="display: none;">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Taxi Qaid</h2>
+      </div>
+      <ul class="sidebar-menu">
+        <li class="active" data-view="dashboard">
+          <a href="#">Dashboard</a>
+        </li>
+        <li data-view="pretrip">
+          <a href="#">Pre-Trip Check</a>
+        </li>
+        <li data-view="posttrip">
+          <a href="#">Post-Trip Check</a>
+        </li>
+        <li data-view="breakdowns">
+          <a href="#">Breakdowns Tracker</a>
+        </li>
+        <li data-view="maintenance">
+          <a href="#">Maintenance Tracker</a>
+        </li>
+        <li data-view="accidents">
+          <a href="#">Accident Tracker</a>
+        </li>
+      </ul>
+      <div class="sidebar-footer">
+        <button id="logout-button" class="btn-logout">Sign Out</button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <header class="header-bar">
+        <div class="header-left-group">
+          <img src="TaxiQaidLogo.jpg" alt="TaxiQaid Logo" class="header-logo">
+          <h1 id="page-title">Dashboard</h1>
+        </div>
+      </header>
+
+      <!-- Dashboard View -->
+      <section id="view-dashboard" class="view-section active">
+        <div class="card">
+          <h2>Welcome to Taxi Qaid ERP</h2>
+          <p style="margin-top: 10px; color: var(--text-muted);">
+            System interface initialized. Select a module from the sidebar navigation menu to begin.
+          </p>
+        </div>
+      </section>
+
+      <!-- Pre-Trip Check View -->
+      <section id="view-pretrip" class="view-section">
+        <div class="card">
+          <h2>Pre-Trip Check</h2>
+          <p style="margin-top: 10px; color: var(--text-muted);">
+            Module pending development...
+          </p>
+        </div>
+      </section>
+
+      <!-- Post-Trip Check View -->
+      <section id="view-posttrip" class="view-section">
+        <div class="card">
+          <h2>Post-Trip Check</h2>
+          <p style="margin-top: 10px; color: var(--text-muted);">
+            Module pending development...
+          </p>
+        </div>
+      </section>
+
+      <!-- Breakdowns Tracker View -->
+      <section id="view-breakdowns" class="view-section">
+        <div class="card">
+          <h2>Breakdowns Tracker</h2>
+          <p style="margin-top: 10px; color: var(--text-muted);">
+            Module pending development...
+          </p>
+        </div>
+      </section>
+
+      <!-- Maintenance Tracker View -->
+      <section id="view-maintenance" class="view-section">
+        <div class="card">
+          <h2>Maintenance Tracker</h2>
+          <p style="margin-top: 10px; color: var(--text-muted);">
+            Module pending development...
+          </p>
+        </div>
+      </section>
+
+      <!-- Accident Tracker View -->
+      <section id="view-accidents" class="view-section">
+        <div class="card">
+          <h2>Accident Tracker</h2>
+          <p style="margin-top: 10px; color: var(--text-muted);">
+            Module pending development...
+          </p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Supabase Client JS Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    // Supabase Configuration
+    const SUPABASE_URL = "https://gycijhgmmaznvcoxphlh.supabase.co";
+    const SUPABASE_PUBLIC_KEY = "sb_publishable_HzPfzuV-3Z-6aCuvGWcBHQ_R5gF7F7T";
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);
+
+    // DOM Elements
+    const loginScreen = document.getElementById("login-screen");
+    const erpApp = document.getElementById("erp-app");
+    const loginForm = document.getElementById("login-form");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const errorMessage = document.getElementById("error-message");
+    const loginButton = document.getElementById("login-button");
+    const logoutButton = document.getElementById("logout-button");
+
+    // Authentication Logic
+    loginForm.addEventListener("submit", async function(e) {
+      e.preventDefault();
+
+      errorMessage.hidden = true;
+      loginButton.disabled = true;
+      loginButton.textContent = "Signing in...";
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+
+      try {
+        const email = username.toLowerCase() + "@taxiqaiddemand.com";
+
+        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+
+        if (authError) throw authError;
+
+        const { data: profile, error: profileError } = await supabaseClient
+          .from("taxiqaid_roles")
+          .select("role")
+          .eq("user_id", authData.user.id)
+          .maybeSingle();
+
+        if (profileError) throw profileError;
+
+        if (!profile) {
+          await supabaseClient.auth.signOut();
+          throw new Error("No authorized role was found.");
         }
 
-        // Simulación del envío del formulario (Aquí conectaremos la API de Google Sheets y la generación PDF)
-        function handlePreTripSubmit(event) {
-            event.preventDefault();
-            
-            const taxiId = document.getElementById('taxi_id').value;
-            const mileage = document.getElementById('mileage').value;
-            const notes = document.getElementById('notes').value;
+        // Successfully logged in
+        loginScreen.style.display = "none";
+        erpApp.style.display = "flex";
 
-            alert(`¡Pre-Trip registrado con éxito para el Taxi #${taxiId}!\nAquí conectaremos el envío a Google Drive y la descarga del PDF local.`);
-            
-            document.getElementById('pretrip-form').reset();
-        }
-    </script>
+      } catch (error) {
+        console.error("Login error:", error);
+        errorMessage.textContent = "Unable to sign in. Check your credentials or contact the administrator.";
+        errorMessage.hidden = false;
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = "Sign In";
+      }
+    });
+
+    // Logout Action
+    logoutButton.addEventListener("click", async () => {
+      await supabaseClient.auth.signOut();
+      erpApp.style.display = "none";
+      loginScreen.style.display = "flex";
+      loginForm.reset();
+    });
+
+    // Navigation View Switcher
+    const menuItems = document.querySelectorAll(".sidebar-menu li");
+    const viewSections = document.querySelectorAll(".view-section");
+    const pageTitle = document.getElementById("page-title");
+
+    menuItems.forEach(item => {
+      item.addEventListener("click", (e) => {
+        e.preventDefault();
+        const targetView = item.getAttribute("data-view");
+
+        menuItems.forEach(li => li.classList.remove("active"));
+        viewSections.forEach(sec => sec.classList.remove("active"));
+
+        item.classList.add("active");
+        document.getElementById(`view-${targetView}`).classList.add("active");
+        pageTitle.textContent = item.querySelector("a").textContent.trim();
+      });
+    });
+  </script>
 </body>
 </html>
