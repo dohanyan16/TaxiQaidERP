@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ERP System - TaxiQaid</title>
+  <title>Taxi Qaid</title>
   
   <style>
     /* Global CSS Variables and Resets */
@@ -62,6 +62,12 @@
       margin: 0 auto 25px;
     }
 
+    .header-logo {
+      height: 40px;
+      width: auto;
+      object-fit: contain;
+    }
+
     input, select {
       width: 100%;
       padding: 12px;
@@ -104,7 +110,7 @@
       margin: 15px 0 0;
     }
 
-    /* ERP DASHBOARD STYLES */
+    /* SYSTEM DASHBOARD STYLES */
     #erp-app {
       display: flex;
       min-height: 100vh;
@@ -187,36 +193,15 @@
       margin-bottom: 30px;
     }
 
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
     .user-info {
       font-size: 14px;
       color: var(--text-muted);
-    }
-
-    /* KPI Cards */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
-    }
-
-    .kpi-card {
-      background: var(--card-bg);
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-
-    .kpi-card h3 {
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-bottom: 10px;
-    }
-
-    .kpi-card .number {
-      font-size: 24px;
-      font-weight: bold;
-      color: var(--text-main);
     }
 
     /* Views / Sections */
@@ -234,76 +219,6 @@
       padding: 25px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.05);
       margin-bottom: 20px;
-    }
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    /* Data Table */
-    .table-responsive {
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-    }
-
-    th, td {
-      padding: 12px 15px;
-      border-bottom: 1px solid var(--border-color);
-      font-size: 14px;
-    }
-
-    th {
-      background-color: #f8f9fa;
-      color: var(--text-muted);
-      font-weight: 600;
-    }
-
-    /* Modal */
-    .modal-backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .modal-backdrop.hidden {
-      display: none;
-    }
-
-    .modal-content {
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      width: 400px;
-      max-width: 90%;
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    .close-btn {
-      background: none;
-      border: none;
-      font-size: 20px;
-      cursor: pointer;
     }
   </style>
 </head>
@@ -344,25 +259,16 @@
     </div>
   </div>
 
-  <!-- 2. MAIN ERP SYSTEM VIEW (Hidden by default) -->
+  <!-- 2. MAIN SYSTEM VIEW (Hidden by default) -->
   <div id="erp-app" style="display: none;">
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <h2>TaxiQaid ERP</h2>
+        <h2>Taxi Qaid</h2>
       </div>
       <ul class="sidebar-menu">
         <li class="active" data-view="dashboard">
           <a href="#">Dashboard</a>
-        </li>
-        <li data-view="inventory">
-          <a href="#">Inventory</a>
-        </li>
-        <li data-view="customers">
-          <a href="#">Customers</a>
-        </li>
-        <li data-view="sales">
-          <a href="#">Sales</a>
         </li>
       </ul>
       <div class="sidebar-footer">
@@ -374,146 +280,24 @@
     <main class="main-content">
       <header class="header-bar">
         <h1 id="page-title">Dashboard</h1>
-        <div class="user-info">
-          Logged in as: <strong id="user-display-name">Manager</strong>
+        <div class="header-right">
+          <div class="user-info">
+            Logged in as: <strong id="user-display-name">Manager</strong>
+          </div>
+          <img src="TaxiQaidLogo.jpg" alt="TaxiQaid Logo" class="header-logo">
         </div>
       </header>
 
       <!-- Dashboard View -->
       <section id="view-dashboard" class="view-section active">
-        <div class="kpi-grid">
-          <div class="kpi-card">
-            <h3>Total Sales</h3>
-            <div class="number" id="kpi-total-sales">$0.00</div>
-          </div>
-          <div class="kpi-card">
-            <h3>Total Products</h3>
-            <div class="number" id="kpi-total-products">0</div>
-          </div>
-          <div class="kpi-card">
-            <h3>Active Customers</h3>
-            <div class="number" id="kpi-total-customers">0</div>
-          </div>
-        </div>
-
         <div class="card">
-          <h2>Welcome to TaxiQaid ERP System</h2>
+          <h2>Welcome to Taxi Qaid</h2>
           <p style="margin-top: 10px; color: var(--text-muted);">
-            Use the sidebar menu on the left to manage inventory, track customer records, and review sales logs.
+            System interface initialized. Ready to construct new modules step by step.
           </p>
         </div>
       </section>
-
-      <!-- Inventory View -->
-      <section id="view-inventory" class="view-section">
-        <div class="card">
-          <div class="card-header">
-            <h2>Inventory Management</h2>
-            <button class="btn-primary" style="width: auto; padding: 8px 16px;" id="open-product-modal">
-              + Add Product
-            </button>
-          </div>
-          <div class="table-responsive">
-            <table>
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Product Name</th>
-                  <th>Stock</th>
-                  <th>Price ($)</th>
-                </tr>
-              </thead>
-              <tbody id="inventory-table-body">
-                <!-- Rows injected dynamically via JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- Customers View -->
-      <section id="view-customers" class="view-section">
-        <div class="card">
-          <div class="card-header">
-            <h2>Customer Directory</h2>
-            <button class="btn-primary" style="width: auto; padding: 8px 16px;" id="open-customer-modal">
-              + Add Customer
-            </button>
-          </div>
-          <div class="table-responsive">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Phone</th>
-                </tr>
-              </thead>
-              <tbody id="customers-table-body">
-                <!-- Rows injected dynamically via JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- Sales View -->
-      <section id="view-sales" class="view-section">
-        <div class="card">
-          <div class="card-header">
-            <h2>Sales Records</h2>
-          </div>
-          <div class="table-responsive">
-            <table>
-              <thead>
-                <tr>
-                  <th>Order ID</th>
-                  <th>Customer</th>
-                  <th>Amount ($)</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody id="sales-table-body">
-                <!-- Rows injected dynamically via JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
     </main>
-  </div>
-
-  <!-- Add Product Modal -->
-  <div id="product-modal" class="modal-backdrop hidden">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Add New Product</h3>
-        <button class="close-btn" id="close-product-modal">&times;</button>
-      </div>
-      <form id="product-form">
-        <input type="text" id="prod-name" placeholder="Product Name" required>
-        <input type="number" id="prod-stock" placeholder="Stock Quantity" required>
-        <input type="number" step="0.01" id="prod-price" placeholder="Price ($)" required>
-        <button type="submit" class="btn-primary">Save Product</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Add Customer Modal -->
-  <div id="customer-modal" class="modal-backdrop hidden">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Add New Customer</h3>
-        <button class="close-btn" id="close-customer-modal">&times;</button>
-      </div>
-      <form id="customer-form">
-        <input type="text" id="cust-name" placeholder="Full Name" required>
-        <input type="email" id="cust-email" placeholder="Email Address" required>
-        <input type="tel" id="cust-phone" placeholder="Phone Number" required>
-        <button type="submit" class="btn-primary">Save Customer</button>
-      </form>
-    </div>
   </div>
 
   <!-- Supabase Client JS Library -->
@@ -525,20 +309,6 @@
     const SUPABASE_PUBLIC_KEY = "sb_publishable_HzPfzuV-3Z-6aCuvGWcBHQ_R5gF7F7T";
     const { createClient } = supabase;
     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);
-
-    // Initial Data State (Local Storage persistent)
-    let inventory = JSON.parse(localStorage.getItem("erp_inventory")) || [
-      { id: "PROD-001", name: "Taxi Meter Device", stock: 15, price: 120.00 },
-      { id: "PROD-002", name: "GPS Tracker Module", stock: 24, price: 85.50 }
-    ];
-
-    let customers = JSON.parse(localStorage.getItem("erp_customers")) || [
-      { id: "CUST-001", name: "John Doe", email: "john@example.com", phone: "+1 555-0192" }
-    ];
-
-    let sales = JSON.parse(localStorage.getItem("erp_sales")) || [
-      { id: "ORD-1001", customer: "John Doe", amount: 205.50, date: "2026-10-24" }
-    ];
 
     // DOM Elements
     const loginScreen = document.getElementById("login-screen");
@@ -588,7 +358,6 @@
         document.getElementById("user-display-name").textContent = username;
         loginScreen.style.display = "none";
         erpApp.style.display = "flex";
-        renderERP();
 
       } catch (error) {
         console.error("Login error:", error);
@@ -608,7 +377,7 @@
       loginForm.reset();
     });
 
-    // Navigation View Switcher
+    // Navigation View Switcher (Prepared for future tabs)
     const menuItems = document.querySelectorAll(".sidebar-menu li");
     const viewSections = document.querySelectorAll(".view-section");
     const pageTitle = document.getElementById("page-title");
@@ -624,90 +393,6 @@
         document.getElementById(`view-${targetView}`).classList.add("active");
         pageTitle.textContent = item.textContent.trim();
       });
-    });
-
-    // Render Data to Tables & Update KPIs
-    function renderERP() {
-      // 1. Inventory Table
-      const invBody = document.getElementById("inventory-table-body");
-      invBody.innerHTML = inventory.map(item => `
-        <tr>
-          <td>${item.id}</td>
-          <td>${item.name}</td>
-          <td>${item.stock}</td>
-          <td>$${parseFloat(item.price).toFixed(2)}</td>
-        </tr>
-      `).join("");
-
-      // 2. Customer Table
-      const custBody = document.getElementById("customers-table-body");
-      custBody.innerHTML = customers.map(item => `
-        <tr>
-          <td>${item.id}</td>
-          <td>${item.name}</td>
-          <td>${item.email}</td>
-          <td>${item.phone}</td>
-        </tr>
-      `).join("");
-
-      // 3. Sales Table
-      const salesBody = document.getElementById("sales-table-body");
-      salesBody.innerHTML = sales.map(item => `
-        <tr>
-          <td>${item.id}</td>
-          <td>${item.customer}</td>
-          <td>$${parseFloat(item.amount).toFixed(2)}</td>
-          <td>${item.date}</td>
-        </tr>
-      `).join("");
-
-      // 4. Update KPI Dashboard Cards
-      const totalRev = sales.reduce((sum, item) => sum + parseFloat(item.amount), 0);
-      document.getElementById("kpi-total-sales").textContent = `$${totalRev.toFixed(2)}`;
-      document.getElementById("kpi-total-products").textContent = inventory.length;
-      document.getElementById("kpi-total-customers").textContent = customers.length;
-    }
-
-    // Modal Control & Form Handlers
-    const prodModal = document.getElementById("product-modal");
-    const custModal = document.getElementById("customer-modal");
-
-    document.getElementById("open-product-modal").onclick = () => prodModal.classList.remove("hidden");
-    document.getElementById("close-product-modal").onclick = () => prodModal.classList.add("hidden");
-
-    document.getElementById("open-customer-modal").onclick = () => custModal.classList.remove("hidden");
-    document.getElementById("close-customer-modal").onclick = () => custModal.classList.add("hidden");
-
-    // Add Product Submission
-    document.getElementById("product-form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const newProd = {
-        id: `PROD-00${inventory.length + 1}`,
-        name: document.getElementById("prod-name").value,
-        stock: parseInt(document.getElementById("prod-stock").value),
-        price: parseFloat(document.getElementById("prod-price").value)
-      };
-      inventory.push(newProd);
-      localStorage.setItem("erp_inventory", JSON.stringify(inventory));
-      renderERP();
-      prodModal.classList.add("hidden");
-      e.target.reset();
-    });
-
-    // Add Customer Submission
-    document.getElementById("customer-form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const newCust = {
-        id: `CUST-00${customers.length + 1}`,
-        name: document.getElementById("cust-name").value,
-        email: document.getElementById("cust-email").value,
-        phone: document.getElementById("cust-phone").value
-      };
-      customers.push(newCust);
-      localStorage.setItem("erp_customers", JSON.stringify(customers));
-      renderERP();
-      custModal.classList.add("hidden");
-      e.target.reset();
     });
   </script>
 </body>
