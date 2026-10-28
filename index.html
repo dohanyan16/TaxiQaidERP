@@ -7,6 +7,8 @@
   
   <!-- Client-side PDF Generation Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- Client-side Excel Reading & Writing Library (SheetJS) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
   <style>
     /* Global CSS Variables and Resets */
@@ -102,12 +104,12 @@
     }
 
     .btn-secondary {
-      padding: 10px 18px;
+      padding: 10px 14px;
       background: #e0e0e0;
       color: var(--text-main);
       border: none;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: bold;
       cursor: pointer;
       transition: background 0.2s;
@@ -279,6 +281,14 @@
     .card-header-flex {
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .button-group-row {
+      display: flex;
+      gap: 10px;
       align-items: center;
     }
 
@@ -534,9 +544,21 @@
                   Type Iqama or Full Name, or click the dropdown arrow to view records.
                 </p>
               </div>
-              <button id="refresh-db-btn" class="btn-secondary">
-                🔄 Refresh Database
-              </button>
+
+              <!-- Database Action Buttons Group -->
+              <div class="button-group-row">
+                <button id="refresh-db-btn" class="btn-secondary" title="Sync with Google Sheets">
+                  🔄 Refresh
+                </button>
+                <button id="export-excel-btn" class="btn-secondary" style="background: #217346; color: white;" title="Export Database to local Excel">
+                  📥 Export Excel
+                </button>
+                <button id="import-excel-btn" class="btn-secondary" style="background: #005a9e; color: white;" title="Batch replace Google Sheets via Excel">
+                  📤 Import Excel
+                </button>
+                <!-- Hidden file input for Excel upload -->
+                <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="display: none;">
+              </div>
             </div>
             
             <div id="sync-status" class="status-badge">Connecting to Google Sheets...</div>
@@ -717,6 +739,14 @@
     const { createClient } = supabase;
     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);
 
+    // Standard expected 17 headers
+    const EXPECTED_HEADERS = [
+      "Iqama Number", "Full Name", "Nationality", "Passport Number", "TID",
+      "Passport Expiry Date", "Iqama Issue Date", "Date of Birth", "Iqama Expiry Date",
+      "Employment Start Date", "Phone Number", "Driver ID", "Arrangement",
+      "KSA Driving License Date", "Shift", "Car Plate", "Status"
+    ];
+
     // DOM Elements
     const loginScreen = document.getElementById("login-screen");
     const erpApp = document.getElementById("erp-app");
@@ -834,6 +864,9 @@
     const profileContainer = document.getElementById("driver-profile-container");
     const syncStatus = document.getElementById("sync-status");
     const refreshDbBtn = document.getElementById("refresh-db-btn");
+    const exportExcelBtn = document.getElementById("export-excel-btn");
+    const importExcelBtn = document.getElementById("import-excel-btn");
+    const excelFileInput = document.getElementById("excel-file-input");
     const editDriverBtn = document.getElementById("edit-driver-btn");
     const cancelEditBtn = document.getElementById("cancel-edit-btn");
 
@@ -860,6 +893,112 @@
 
     refreshDbBtn.addEventListener("click", () => {
       fetchDriversFromGoogleSheets();
+    });
+
+    // EXPORT TO LOCAL EXCEL (.XLSX)
+    exportExcelBtn.addEventListener("click", () => {
+      if (!driversDatabase || driversDatabase.length === 0) {
+        alert("No driver data available to export.");
+        return;
+      }
+
+      // Ensure data rows follow strict header order
+      const exportData = driversDatabase.map(driver => {
+        let rowObj = {};
+        EXPECTED_HEADERS.forEach(h => {
+          rowObj[h] = formatDateForDisplay(driver[h]);
+        });
+        return rowObj;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData, { header: EXPECTED_HEADERS });
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Drivers_Database");
+
+      const today = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(workbook, `Drivers_Database_${today}.xlsx`);
+    });
+
+    // IMPORT EXCEL (.XLSX) AND BATCH REPLACE GOOGLE SHEET
+    importExcelBtn.addEventListener("click", () => {
+      excelFileInput.value = "";
+      excelFileInput.click();
+    });
+
+    excelFileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          
+          // Get headers from first row
+          const jsonSheet = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          if (!jsonSheet || jsonSheet.length === 0) {
+            alert("Error: Uploaded Excel file is empty.");
+            return;
+          }
+
+          const fileHeaders = jsonSheet[0].map(h => String(h).trim());
+          
+          // Validate exact header match
+          const isValidHeaders = EXPECTED_HEADERS.length === fileHeaders.length && 
+            EXPECTED_HEADERS.every((val, index) => val === fileHeaders[index]);
+
+          if (!isValidHeaders) {
+            alert("❌ Import Rejected: The headers in the uploaded Excel file do not match the required format.\n\nRequired columns:\n" + EXPECTED_HEADERS.join(", "));
+            return;
+          }
+
+          // Convert rows to Objects
+          const parsedRows = XLSX.utils.sheet_to_json(worksheet);
+
+          const confirmUpload = confirm(`Are you sure you want to replace the current Google Sheets database with ${parsedRows.length} driver record(s) from this file?`);
+          if (!confirmUpload) return;
+
+          syncStatus.textContent = "⏳ Uploading and replacing Google Sheets database...";
+          syncStatus.style.color = "#0284c7";
+
+          // Send batch replacement request to Google Apps Script
+          const response = await fetch(GOOGLE_SHEET_DRIVERS_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({
+              action: "batchReplace",
+              rows: parsedRows
+            })
+          });
+
+          const resData = await response.json();
+          if (resData.status === "success") {
+            driversDatabase = parsedRows;
+            syncStatus.textContent = `✅ Successfully replaced Google Sheets with ${parsedRows.length} driver record(s).`;
+            syncStatus.style.color = "#2e7d32";
+            
+            // Clear inputs and hide profile
+            iqamaInput.value = "";
+            nameInput.value = "";
+            profileContainer.style.display = "none";
+            
+            alert(`Database updated successfully! Total records: ${parsedRows.length}`);
+          } else {
+            throw new Error(resData.message || "Batch update failed");
+          }
+
+        } catch (err) {
+          console.error("Import error:", err);
+          alert("Failed to process Excel file or update Google Sheets: " + err.message);
+          syncStatus.textContent = "❌ Batch import failed.";
+          syncStatus.style.color = "#c62828";
+        }
+      };
+
+      reader.readAsArrayBuffer(file);
     });
 
     // Helper to hide dropdowns
