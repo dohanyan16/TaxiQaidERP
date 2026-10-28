@@ -980,9 +980,22 @@
       }
     });
 
-    // Helper to format date strings to YYYY-MM-DD for <input type="date">
+    // Helper to format date strings cleanly to YYYY-MM-DD
+    function formatDateForDisplay(dateStr) {
+      if (!dateStr || dateStr.toString().trim() === "" || dateStr === "Not Yet") return "-";
+      let str = String(dateStr);
+      if (str.includes("T")) {
+        return str.split("T")[0];
+      }
+      return str;
+    }
+
     function formatDateForInput(dateStr) {
       if (!dateStr || dateStr.toString().trim() === "" || dateStr === "Not Yet") return "";
+      let str = String(dateStr);
+      if (str.includes("T")) {
+        return str.split("T")[0];
+      }
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr;
       return d.toISOString().split('T')[0];
@@ -1003,18 +1016,19 @@
       document.getElementById("val-nationality").innerHTML = driver["Nationality"] || "-";
       document.getElementById("val-passport").innerHTML = driver["Passport Number"] || "-";
       document.getElementById("val-tid").innerHTML = driver["TID"] || "-";
-      document.getElementById("val-passport-exp").innerHTML = driver["Passport Expiry Date"] || "-";
-      document.getElementById("val-iqama-issue").innerHTML = driver["Iqama Issue Date"] || "-";
-      document.getElementById("val-dob").innerHTML = driver["Date of Birth"] || "-";
-      document.getElementById("val-iqama-exp").innerHTML = driver["Iqama Expiry Date"] || "-";
-      document.getElementById("val-work-start").innerHTML = driver["Employment Start Date"] || "-";
+      document.getElementById("val-passport-exp").innerHTML = formatDateForDisplay(driver["Passport Expiry Date"]);
+      document.getElementById("val-iqama-issue").innerHTML = formatDateForDisplay(driver["Iqama Issue Date"]);
+      document.getElementById("val-dob").innerHTML = formatDateForDisplay(driver["Date of Birth"]);
+      document.getElementById("val-iqama-exp").innerHTML = formatDateForDisplay(driver["Iqama Expiry Date"]);
+      document.getElementById("val-work-start").innerHTML = formatDateForDisplay(driver["Employment Start Date"]);
       document.getElementById("val-phone").innerHTML = driver["Phone Number"] || "-";
       document.getElementById("val-driver-id").innerHTML = driver["Driver ID"] || "-";
       document.getElementById("val-arrangement").innerHTML = driver["Arrangement"] || "-";
       
       const licenseVal = driver["KSA Driving License Date"];
+      const formattedLicense = formatDateForDisplay(licenseVal);
       document.getElementById("val-license-date").innerHTML = 
-        (licenseVal && String(licenseVal).trim() !== "" && String(licenseVal).trim() !== "Not Yet") ? licenseVal : "Not Yet";
+        (licenseVal && String(licenseVal).trim() !== "" && String(licenseVal).trim() !== "Not Yet") ? formattedLicense : "Not Yet";
 
       document.getElementById("val-shift").innerHTML = driver["Shift"] || "-";
       document.getElementById("val-car-plate").innerHTML = driver["Car Plate"] || "-";
@@ -1060,7 +1074,7 @@
       `;
       
       // KSA Driving License Date (Date picker, defaults to "Not Yet" if empty)
-      const licDate = formatDateForInput(d["KSA Driving License Date"]);
+      const licDate = (d["KSA Driving License Date"] && d["KSA Driving License Date"] !== "Not Yet") ? formatDateForInput(d["KSA Driving License Date"]) : "";
       document.getElementById("val-license-date").innerHTML = `<input type="date" id="edit-license-date" value="${licDate}">`;
       
       // Shift Dropdown
@@ -1113,7 +1127,6 @@
       editDriverBtn.textContent = "Saving...";
 
       try {
-        // Send POST to Apps Script API
         const response = await fetch(GOOGLE_SHEET_DRIVERS_URL, {
           method: "POST",
           headers: { "Content-Type": "text/plain" },
@@ -1123,7 +1136,6 @@
         const resData = await response.json();
 
         if (resData.status === "success") {
-          // Update local Database
           const index = driversDatabase.findIndex(d => String(d["Iqama Number"]).trim() === String(currentActiveDriver["Iqama Number"]).trim());
           if (index !== -1) {
             driversDatabase[index] = updatedDriver;
