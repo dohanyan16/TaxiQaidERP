@@ -594,21 +594,36 @@
 
     async function fetchDrivers() {
       try {
+        document.getElementById("sync-status").textContent = "🔄 Syncing drivers with Google Sheets...";
+        document.getElementById("sync-status").style.color = "#0284c7";
+
         const res = await fetch(GOOGLE_SHEET_DRIVERS_URL);
-        if (res.ok) driversDatabase = await res.json();
-      } catch (e) { console.error("Error fetching drivers", e); }
+        if (!res.ok) throw new Error("Network error");
+        driversDatabase = await res.json();
+
+        document.getElementById("sync-status").textContent = `✅ Synced ${driversDatabase.length} driver record(s).`;
+        document.getElementById("sync-status").style.color = "#2e7d32";
+      } catch (e) {
+        console.error("Error fetching drivers", e);
+        document.getElementById("sync-status").textContent = "❌ Failed to load drivers.";
+        document.getElementById("sync-status").style.color = "#c62828";
+      }
     }
 
     async function fetchFleet() {
       try {
         document.getElementById("fleet-sync-status").textContent = "🔄 Syncing fleet...";
+        document.getElementById("fleet-sync-status").style.color = "#0284c7";
+
         const res = await fetch(GOOGLE_SHEET_FLEET_URL);
-        if (res.ok) {
-          fleetDatabase = await res.json();
-          document.getElementById("fleet-sync-status").textContent = `✅ Synced ${fleetDatabase.length} vehicle(s).`;
-        }
+        if (!res.ok) throw new Error("Network error");
+        fleetDatabase = await res.json();
+
+        document.getElementById("fleet-sync-status").textContent = `✅ Synced ${fleetDatabase.length} vehicle(s).`;
+        document.getElementById("fleet-sync-status").style.color = "#2e7d32";
       } catch (e) {
         document.getElementById("fleet-sync-status").textContent = "❌ Failed to load fleet.";
+        document.getElementById("fleet-sync-status").style.color = "#c62828";
       }
     }
 
@@ -1001,7 +1016,6 @@
           const index = driversDatabase.findIndex(d => String(d["Iqama Number"]).trim() === String(currentActiveDriver["Iqama Number"]).trim());
           if (index !== -1) driversDatabase[index] = updatedDriver;
 
-          // Sincronizar automáticamente en Fleet Management si se seleccionó una placa
           if (selectedPlate) {
             const vehicle = fleetDatabase.find(v => String(v["Plate"]).trim() === String(selectedPlate).trim());
             if (vehicle) {
