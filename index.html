@@ -902,7 +902,6 @@
         return;
       }
 
-      // Ensure data rows follow strict header order
       const exportData = driversDatabase.map(driver => {
         let rowObj = {};
         EXPECTED_HEADERS.forEach(h => {
@@ -919,7 +918,7 @@
       XLSX.writeFile(workbook, `Drivers_Database_${today}.xlsx`);
     });
 
-    // IMPORT EXCEL (.XLSX) AND BATCH REPLACE GOOGLE SHEET
+    // IMPORT EXCEL (.XLSX) AND BATCH REPLACE GOOGLE SHEET (Optimized raw text reading)
     importExcelBtn.addEventListener("click", () => {
       excelFileInput.value = "";
       excelFileInput.click();
@@ -933,12 +932,11 @@
       reader.onload = async (evt) => {
         try {
           const data = new Uint8Array(evt.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
+          const workbook = XLSX.read(data, { type: 'array', raw: true });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
           
-          // Get headers from first row
-          const jsonSheet = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          const jsonSheet = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
           if (!jsonSheet || jsonSheet.length === 0) {
             alert("Error: Uploaded Excel file is empty.");
             return;
@@ -946,7 +944,6 @@
 
           const fileHeaders = jsonSheet[0].map(h => String(h).trim());
           
-          // Validate exact header match
           const isValidHeaders = EXPECTED_HEADERS.length === fileHeaders.length && 
             EXPECTED_HEADERS.every((val, index) => val === fileHeaders[index]);
 
@@ -955,8 +952,14 @@
             return;
           }
 
-          // Convert rows to Objects
-          const parsedRows = XLSX.utils.sheet_to_json(worksheet);
+          const rawRows = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+          const parsedRows = rawRows.map(row => {
+            let cleanRow = {};
+            EXPECTED_HEADERS.forEach(h => {
+              cleanRow[h] = row[h] !== undefined && row[h] !== null ? String(row[h]).trim() : "";
+            });
+            return cleanRow;
+          });
 
           const confirmUpload = confirm(`Are you sure you want to replace the current Google Sheets database with ${parsedRows.length} driver record(s) from this file?`);
           if (!confirmUpload) return;
@@ -964,7 +967,6 @@
           syncStatus.textContent = "⏳ Uploading and replacing Google Sheets database...";
           syncStatus.style.color = "#0284c7";
 
-          // Send batch replacement request to Google Apps Script
           const response = await fetch(GOOGLE_SHEET_DRIVERS_URL, {
             method: "POST",
             headers: { "Content-Type": "text/plain" },
@@ -980,7 +982,6 @@
             syncStatus.textContent = `✅ Successfully replaced Google Sheets with ${parsedRows.length} driver record(s).`;
             syncStatus.style.color = "#2e7d32";
             
-            // Clear inputs and hide profile
             iqamaInput.value = "";
             nameInput.value = "";
             profileContainer.style.display = "none";
