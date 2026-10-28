@@ -1,54 +1,1047 @@
-function doPost(e) {
-  try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var payload = JSON.parse(e.postData.contents);
-    
-    if (payload.action === "batchReplace") {
-      var newRows = payload.rows;
-      var headers = [
-        "Plate", "Brand", "Model", "VIN", "Fuel Type",
-        "Total KM", "Availability", "Accidents", "Last Maintenance", "Last Oil Change",
-        "Insurance Start Date", "Insurance Expiry Date", "Operation Card Start Date", "Operation Card Expiry Date"
-      ];
-      var lastRow = sheet.getLastRow();
-      if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, headers.length).clearContent();
-      if (newRows && newRows.length > 0) {
-        var outputData = [];
-        for (var i = 0; i < newRows.length; i++) {
-          var rowObj = newRows[i];
-          var rowArray = [];
-          for (var j = 0; j < headers.length; j++) {
-            var val = rowObj[headers[j]];
-            rowArray.push(val !== undefined && val !== null ? val : "");
-          }
-          outputData.push(rowArray);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taxi Qaid ERP</title>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
+  <style>
+    :root {
+      --primary: #F58220;
+      --primary-hover: #D96A10;
+      --bg-dark: #121212;
+      --bg-light: #f4f6f8;
+      --card-bg: #ffffff;
+      --text-main: #333333;
+      --text-muted: #666666;
+      --border-color: #e0e0e0;
+      --danger: #c62828;
+      --success: #2e7d32;
+      --sidebar-width: 250px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    body { background-color: var(--bg-light); min-height: 100vh; }
+
+    #login-screen {
+      min-height: 100vh;
+      background-color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-box {
+      background: white;
+      width: 380px;
+      max-width: calc(100% - 40px);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+
+    .logo {
+      display: block;
+      width: 220px;
+      max-width: 100%;
+      max-height: 120px;
+      height: auto;
+      object-fit: contain;
+      margin: 0 auto 25px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 18px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid var(--primary);
+      outline-offset: 1px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-primary:disabled { opacity: 0.65; cursor: wait; }
+
+    .btn-secondary {
+      padding: 10px 14px;
+      background: #e0e0e0;
+      color: var(--text-main);
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-secondary:hover { background: #d4d4d4; }
+    #error-message { color: var(--danger); font-size: 14px; margin: 15px 0 0; }
+
+    #erp-app { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: var(--sidebar-width);
+      background-color: #1e1e2d;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      padding-top: 10px;
+      padding-bottom: 15px;
+      transition: width 0.3s ease;
+      position: relative;
+    }
+
+    .sidebar.collapsed { width: 70px; }
+
+    .btn-collapse {
+      background: #323248;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 5px 15px 10px auto;
+      transition: background 0.2s, margin 0.3s;
+    }
+
+    .sidebar.collapsed .btn-collapse { margin: 5px auto 10px auto; }
+    .btn-collapse:hover { background: var(--primary); }
+
+    .sidebar-menu { list-style: none; margin: 0; flex-grow: 1; }
+
+    .sidebar-menu li a {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      color: #a2a3b7;
+      text-decoration: none;
+      font-size: 15px;
+      transition: all 0.3s;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .sidebar-menu li a:hover, .sidebar-menu li.active a {
+      background-color: #2b2b40;
+      color: var(--primary);
+      border-left: 4px solid var(--primary);
+    }
+
+    .sidebar.collapsed .nav-text { display: none; }
+
+    .sidebar-footer { padding: 15px; border-top: 1px solid #2d2d3f; }
+    .btn-logout {
+      width: 100%;
+      padding: 10px;
+      background: #323248;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .btn-logout:hover { background: var(--danger); }
+
+    .right-wrapper { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .header-bar {
+      background: #ffffff;
+      padding: 15px 30px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      height: 70px;
+    }
+
+    .header-left-group { display: flex; align-items: center; gap: 15px; }
+    .header-logo { height: 40px; width: auto; object-fit: contain; }
+
+    .main-content { flex-grow: 1; padding: 30px; overflow-y: auto; }
+    .view-section { display: none; }
+    .view-section.active { display: block; }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+
+    .card-header-flex {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .button-group-row { display: flex; gap: 10px; align-items: center; }
+
+    .search-row { display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 20px; }
+    .search-wrapper { position: relative; }
+    .input-with-btn { position: relative; display: flex; align-items: center; }
+    .input-with-btn input { margin-bottom: 0 !important; padding-right: 40px; }
+
+    .dropdown-arrow-btn {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 6px;
+      transition: color 0.2s;
+    }
+    .dropdown-arrow-btn:hover { color: var(--primary); }
+
+    .custom-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      max-height: 160px;
+      overflow-y: auto;
+      z-index: 1000;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+      display: none;
+    }
+
+    .custom-dropdown-item {
+      padding: 10px 14px;
+      font-size: 15px;
+      color: var(--text-main);
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      transition: background 0.15s;
+    }
+    .custom-dropdown-item:last-child { border-bottom: none; }
+    .custom-dropdown-item:hover { background-color: #fdf2e9; color: var(--primary); }
+
+    .profile-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .profile-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+      margin-bottom: 25px;
+    }
+
+    .field-item {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .field-item.full-width {
+      grid-column: 1 / -1;
+      background: #fff8f0;
+      border-color: #fdd8b5;
+    }
+
+    .field-label {
+      font-size: 12px;
+      font-weight: bold;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .field-value {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-main);
+      word-break: break-word;
+    }
+
+    .driver-tag-box {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 5px;
+    }
+
+    .driver-tag {
+      background: #ffffff;
+      border: 1px solid var(--primary);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .field-item input, .field-item select { margin-bottom: 0; padding: 8px 10px; font-size: 14px; background: #ffffff; }
+    .status-badge { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+    .action-row { display: flex; gap: 12px; }
+  </style>
+</head>
+
+<body>
+
+  <!-- 1. LOGIN SCREEN -->
+  <div id="login-screen">
+    <div class="login-box">
+      <img src="TaxiQaidLogo.jpg" alt="TaxiQaid Logo" class="logo">
+      <form id="login-form">
+        <input type="text" id="username" placeholder="Username" autocomplete="username" autocapitalize="none" required>
+        <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+        <button id="login-button" class="btn-primary" type="submit">Sign In</button>
+        <p id="error-message" role="alert" hidden>Invalid username or password.</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. MAIN ERP APP -->
+  <div id="erp-app" style="display: none;">
+    <aside class="sidebar" id="sidebar">
+      <button id="sidebar-toggle" class="btn-collapse" title="Toggle Sidebar">◀</button>
+      <ul class="sidebar-menu">
+        <li class="active" data-view="dashboard"><a href="#"><span class="nav-text">Dashboard</span></a></li>
+        <li data-view="fleet"><a href="#"><span class="nav-text">Fleet Management</span></a></li>
+        <li data-view="drivers"><a href="#"><span class="nav-text">Drivers Management</span></a></li>
+        <li data-view="pretrip"><a href="#"><span class="nav-text">Pre-Trip Check</span></a></li>
+        <li data-view="posttrip"><a href="#"><span class="nav-text">Post-Trip Check</span></a></li>
+        <li data-view="breakdowns"><a href="#"><span class="nav-text">Breakdowns Tracker</span></a></li>
+        <li data-view="maintenance"><a href="#"><span class="nav-text">Maintenance Tracker</span></a></li>
+        <li data-view="accidents"><a href="#"><span class="nav-text">Accident Tracker</span></a></li>
+      </ul>
+      <div class="sidebar-footer">
+        <button id="logout-button" class="btn-logout"><span class="nav-text">Sign Out</span></button>
+      </div>
+    </aside>
+
+    <div class="right-wrapper">
+      <header class="header-bar">
+        <div class="header-left-group">
+          <img src="TaxiQaidLogo.jpg" alt="TaxiQaid Logo" class="header-logo">
+          <h1 id="page-title">Dashboard</h1>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <!-- Dashboard -->
+        <section id="view-dashboard" class="view-section active">
+          <div class="card">
+            <h2>Welcome to Taxi Qaid ERP</h2>
+            <p style="margin-top: 10px; color: var(--text-muted);">Select a module from the sidebar navigation menu to begin.</p>
+          </div>
+        </section>
+
+        <!-- Fleet Management View -->
+        <section id="view-fleet" class="view-section">
+          <div class="card">
+            <div class="card-header-flex">
+              <div>
+                <h2>Fleet Lookup</h2>
+                <p style="margin-top: 5px; color: var(--text-muted);">Search by vehicle license plate or click the dropdown arrow.</p>
+              </div>
+              <div class="button-group-row">
+                <button id="refresh-fleet-btn" class="btn-secondary">🔄 Refresh</button>
+                <button id="export-fleet-excel-btn" class="btn-secondary" style="background: #217346; color: white;">📥 Export Excel</button>
+                <button id="import-fleet-excel-btn" class="btn-secondary" style="background: #005a9e; color: white;">📤 Import Excel</button>
+                <input type="file" id="fleet-excel-file-input" accept=".xlsx, .xls" style="display: none;">
+              </div>
+            </div>
+            <div id="fleet-sync-status" class="status-badge">Connecting to Google Sheets...</div>
+            <div class="search-row" style="margin-top: 15px;">
+              <div class="search-wrapper">
+                <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Search by Plate</label>
+                <div class="input-with-btn">
+                  <input type="text" id="fleet-plate-input" placeholder="Type vehicle plate..." autocomplete="off">
+                  <button type="button" id="toggle-fleet-btn" class="dropdown-arrow-btn">▼</button>
+                </div>
+                <div id="fleet-dropdown" class="custom-dropdown"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="fleet-profile-container" style="display: none;">
+            <div class="profile-card">
+              <h2 id="profile-vehicle-name">Vehicle Profile</h2>
+              <div class="profile-grid">
+                <div class="field-item"><div class="field-label">Plate</div><div class="field-value" id="f-val-plate">-</div></div>
+                <div class="field-item"><div class="field-label">Brand</div><div class="field-value" id="f-val-brand">-</div></div>
+                <div class="field-item"><div class="field-label">Model</div><div class="field-value" id="f-val-model">-</div></div>
+                <div class="field-item"><div class="field-label">VIN</div><div class="field-value" id="f-val-vin">-</div></div>
+                <div class="field-item"><div class="field-label">Fuel Type</div><div class="field-value" id="f-val-fuel">-</div></div>
+                
+                <!-- Sección Dinámica para hasta 2 conductores asignados -->
+                <div class="field-item full-width">
+                  <div class="field-label">Assigned Drivers (Auto-Synced from Drivers DB)</div>
+                  <div class="field-value" id="f-val-assigned-drivers">No drivers assigned</div>
+                </div>
+
+                <div class="field-item"><div class="field-label">Total KM</div><div class="field-value" id="f-val-km">-</div></div>
+                <div class="field-item"><div class="field-label">Availability</div><div class="field-value" id="f-val-availability">-</div></div>
+                <div class="field-item"><div class="field-label">Accidents</div><div class="field-value" id="f-val-accidents">-</div></div>
+                <div class="field-item"><div class="field-label">Last Maintenance</div><div class="field-value" id="f-val-mantenimiento">-</div></div>
+                <div class="field-item"><div class="field-label">Last Oil Change</div><div class="field-value" id="f-val-oil">-</div></div>
+                <div class="field-item"><div class="field-label">Insurance Start Date</div><div class="field-value" id="f-val-ins-start">-</div></div>
+                <div class="field-item"><div class="field-label">Insurance Expiry Date</div><div class="field-value" id="f-val-ins-exp">-</div></div>
+                <div class="field-item"><div class="field-label">Operation Card Start Date</div><div class="field-value" id="f-val-op-start">-</div></div>
+                <div class="field-item"><div class="field-label">Operation Card Expiry Date</div><div class="field-value" id="f-val-op-exp">-</div></div>
+              </div>
+              <div class="action-row">
+                <button id="edit-fleet-btn" class="btn-primary" style="max-width: 200px;">Edit Vehicle Details</button>
+                <button id="cancel-fleet-edit-btn" class="btn-secondary" style="display: none; max-width: 120px;">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Drivers Management View -->
+        <section id="view-drivers" class="view-section">
+          <div class="card">
+            <div class="card-header-flex">
+              <div>
+                <h2>Driver Lookup</h2>
+                <p style="margin-top: 5px; color: var(--text-muted);">Type Iqama or Full Name to search records.</p>
+              </div>
+              <div class="button-group-row">
+                <button id="refresh-db-btn" class="btn-secondary">🔄 Refresh</button>
+                <button id="export-excel-btn" class="btn-secondary" style="background: #217346; color: white;">📥 Export Excel</button>
+                <button id="import-excel-btn" class="btn-secondary" style="background: #005a9e; color: white;">📤 Import Excel</button>
+                <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="display: none;">
+              </div>
+            </div>
+            <div id="sync-status" class="status-badge">Connecting to Google Sheets...</div>
+            <div class="search-row" style="margin-top: 15px; grid-template-columns: 1fr 1fr;">
+              <div class="search-wrapper">
+                <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Search by Iqama Number</label>
+                <div class="input-with-btn">
+                  <input type="text" id="driver-iqama-input" placeholder="Type Iqama number..." autocomplete="off">
+                  <button type="button" id="toggle-iqama-btn" class="dropdown-arrow-btn">▼</button>
+                </div>
+                <div id="iqama-dropdown" class="custom-dropdown"></div>
+              </div>
+              <div class="search-wrapper">
+                <label style="font-size: 13px; font-weight: bold; color: var(--text-main);">Search by Full Name</label>
+                <div class="input-with-btn">
+                  <input type="text" id="driver-name-input" placeholder="Type full name..." autocomplete="off">
+                  <button type="button" id="toggle-name-btn" class="dropdown-arrow-btn">▼</button>
+                </div>
+                <div id="name-dropdown" class="custom-dropdown"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="driver-profile-container" style="display: none;">
+            <div class="profile-card">
+              <h2 id="profile-driver-name">Driver Profile</h2>
+              <div class="profile-grid">
+                <div class="field-item"><div class="field-label">Iqama Number</div><div class="field-value" id="val-iqama">-</div></div>
+                <div class="field-item"><div class="field-label">Full Name</div><div class="field-value" id="val-name">-</div></div>
+                <div class="field-item"><div class="field-label">Nationality</div><div class="field-value" id="val-nationality">-</div></div>
+                <div class="field-item"><div class="field-label">Passport Number</div><div class="field-value" id="val-passport">-</div></div>
+                <div class="field-item"><div class="field-label">TID</div><div class="field-value" id="val-tid">-</div></div>
+                <div class="field-item"><div class="field-label">Passport Expiry Date</div><div class="field-value" id="val-passport-exp">-</div></div>
+                <div class="field-item"><div class="field-label">Iqama Issue Date</div><div class="field-value" id="val-iqama-issue">-</div></div>
+                <div class="field-item"><div class="field-label">Date of Birth</div><div class="field-value" id="val-dob">-</div></div>
+                <div class="field-item"><div class="field-label">Iqama Expiry Date</div><div class="field-value" id="val-iqama-exp">-</div></div>
+                <div class="field-item"><div class="field-label">Employment Start Date</div><div class="field-value" id="val-work-start">-</div></div>
+                <div class="field-item"><div class="field-label">Phone Number</div><div class="field-value" id="val-phone">-</div></div>
+                <div class="field-item"><div class="field-label">Driver ID</div><div class="field-value" id="val-driver-id">-</div></div>
+                <div class="field-item"><div class="field-label">Arrangement</div><div class="field-value" id="val-arrangement">-</div></div>
+                <div class="field-item"><div class="field-label">KSA Driving License Date</div><div class="field-value" id="val-license-date">-</div></div>
+                <div class="field-item"><div class="field-label">Shift</div><div class="field-value" id="val-shift">-</div></div>
+                <div class="field-item"><div class="field-label">Car Plate</div><div class="field-value" id="val-car-plate">-</div></div>
+                <div class="field-item"><div class="field-label">Status</div><div class="field-value" id="val-status">-</div></div>
+              </div>
+              <div class="action-row">
+                <button id="edit-driver-btn" class="btn-primary" style="max-width: 200px;">Edit Driver Details</button>
+                <button id="cancel-edit-btn" class="btn-secondary" style="display: none; max-width: 120px;">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Placeholders -->
+        <section id="view-pretrip" class="view-section"><div class="card"><h2>Pre-Trip Check</h2><p>Pending...</p></div></section>
+        <section id="view-posttrip" class="view-section"><div class="card"><h2>Post-Trip Check</h2><p>Pending...</p></div></section>
+        <section id="view-breakdowns" class="view-section"><div class="card"><h2>Breakdowns Tracker</h2><p>Pending...</p></div></section>
+        <section id="view-maintenance" class="view-section"><div class="card"><h2>Maintenance Tracker</h2><p>Pending...</p></div></section>
+        <section id="view-accidents" class="view-section"><div class="card"><h2>Accident Tracker</h2><p>Pending...</p></div></section>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    const SUPABASE_URL = "https://gycijhgmmaznvcoxphlh.supabase.co";
+    const SUPABASE_PUBLIC_KEY = "sb_publishable_HzPfzuV-3Z-6aCuvGWcBHQ_R5gF7F7T";
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);
+
+    const GOOGLE_SHEET_DRIVERS_URL = "https://script.google.com/macros/s/AKfycby7-NkH3HuZF2dXsLf0WGCV76bdxSZ1YXZsbs785qrgIAoBA9eal7DIRYPWypwWRPpQkA/exec";
+    const GOOGLE_SHEET_FLEET_URL = "https://script.google.com/macros/s/AKfycbyaQI9cnIy7qEYt8F0BNSG2y1HOPD-8kjKU12Y9LbDNq4aLaJ3wrVEbYp2e6Mzmnfsr/exec";
+
+    let driversDatabase = [];
+    let fleetDatabase = [];
+
+    const loginScreen = document.getElementById("login-screen");
+    const erpApp = document.getElementById("erp-app");
+    const loginForm = document.getElementById("login-form");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const errorMessage = document.getElementById("error-message");
+    const loginButton = document.getElementById("login-button");
+    const logoutButton = document.getElementById("logout-button");
+    const sidebar = document.getElementById("sidebar");
+    const sidebarToggle = document.getElementById("sidebar-toggle");
+
+    sidebarToggle.addEventListener("click", () => {
+      sidebar.classList.toggle("collapsed");
+      sidebarToggle.textContent = sidebar.classList.contains("collapsed") ? "▶" : "◀";
+    });
+
+    loginForm.addEventListener("submit", async function(e) {
+      e.preventDefault();
+      errorMessage.hidden = true;
+      loginButton.disabled = true;
+      loginButton.textContent = "Signing in...";
+
+      try {
+        const email = usernameInput.value.trim().toLowerCase() + "@taxiqaiddemand.com";
+        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({ email, password: passwordInput.value });
+        if (authError) throw authError;
+
+        const { data: profile, error: profileError } = await supabaseClient
+          .from("taxiqaid_roles").select("role").eq("user_id", authData.user.id).maybeSingle();
+        if (profileError || !profile) {
+          await supabaseClient.auth.signOut();
+          throw new Error("No authorized role found.");
         }
-        sheet.getRange(2, 1, outputData.length, headers.length).setValues(outputData);
+
+        loginScreen.style.display = "none";
+        erpApp.style.display = "flex";
+        await fetchDrivers();
+        await fetchFleet();
+      } catch (error) {
+        errorMessage.textContent = "Unable to sign in. Check your credentials.";
+        errorMessage.hidden = false;
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = "Sign In";
       }
-      return ContentService.createTextOutput(JSON.stringify({ status: "success", count: newRows ? newRows.length : 0 })).setMimeType(ContentService.MimeType.JSON);
+    });
+
+    logoutButton.addEventListener("click", async () => {
+      await supabaseClient.auth.signOut();
+      erpApp.style.display = "none";
+      loginScreen.style.display = "flex";
+      loginForm.reset();
+    });
+
+    const menuItems = document.querySelectorAll(".sidebar-menu li");
+    const viewSections = document.querySelectorAll(".view-section");
+    const pageTitle = document.getElementById("page-title");
+
+    menuItems.forEach(item => {
+      item.addEventListener("click", (e) => {
+        e.preventDefault();
+        const targetView = item.getAttribute("data-view");
+        menuItems.forEach(li => li.classList.remove("active"));
+        viewSections.forEach(sec => sec.classList.remove("active"));
+        item.classList.add("active");
+        document.getElementById(`view-${targetView}`).classList.add("active");
+        pageTitle.textContent = item.querySelector(".nav-text").textContent.trim();
+        if (targetView === "drivers" && driversDatabase.length === 0) fetchDrivers();
+        if (targetView === "fleet" && fleetDatabase.length === 0) fetchFleet();
+      });
+    });
+
+    function formatDateForDisplay(d) {
+      if (!d || String(d).trim() === "" || d === "Not Yet") return "-";
+      let s = String(d);
+      return s.includes("T") ? s.split("T")[0] : s;
     }
-    
-    var data = sheet.getDataRange().getValues();
-    var headers = data[0];
-    var plateIndex = headers.indexOf("Plate");
-    var targetRowIndex = -1;
-    for (var i = 1; i < data.length; i++) {
-      if (data[i][plateIndex].toString().trim() === payload["Plate"].toString().trim()) {
-        targetRowIndex = i + 1;
-        break;
+    function formatDateForInput(d) {
+      if (!d || String(d).trim() === "" || d === "Not Yet") return "";
+      let s = String(d);
+      if (s.includes("T")) return s.split("T")[0];
+      const parsed = new Date(d);
+      return isNaN(parsed.getTime()) ? "" : parsed.toISOString().split('T')[0];
+    }
+
+    async function fetchDrivers() {
+      try {
+        document.getElementById("sync-status").textContent = "🔄 Syncing drivers with Google Sheets...";
+        document.getElementById("sync-status").style.color = "#0284c7";
+
+        const res = await fetch(GOOGLE_SHEET_DRIVERS_URL);
+        if (!res.ok) throw new Error("Network error");
+        driversDatabase = await res.json();
+
+        document.getElementById("sync-status").textContent = `✅ Synced ${driversDatabase.length} driver record(s).`;
+        document.getElementById("sync-status").style.color = "#2e7d32";
+      } catch (e) {
+        console.error("Error fetching drivers", e);
+        document.getElementById("sync-status").textContent = "❌ Failed to load drivers.";
+        document.getElementById("sync-status").style.color = "#c62828";
       }
     }
-    if (targetRowIndex !== -1) {
-      for (var j = 0; j < headers.length; j++) {
-        var headerName = headers[j].toString().trim();
-        if (payload.hasOwnProperty(headerName)) {
-          sheet.getRange(targetRowIndex, j + 1).setValue(payload[headerName]);
+
+    async function fetchFleet() {
+      try {
+        document.getElementById("fleet-sync-status").textContent = "🔄 Syncing fleet...";
+        document.getElementById("fleet-sync-status").style.color = "#0284c7";
+
+        const res = await fetch(GOOGLE_SHEET_FLEET_URL);
+        if (!res.ok) throw new Error("Network error");
+        fleetDatabase = await res.json();
+
+        document.getElementById("fleet-sync-status").textContent = `✅ Synced ${fleetDatabase.length} vehicle(s).`;
+        document.getElementById("fleet-sync-status").style.color = "#2e7d32";
+      } catch (e) {
+        document.getElementById("fleet-sync-status").textContent = "❌ Failed to load fleet.";
+        document.getElementById("fleet-sync-status").style.color = "#c62828";
+      }
+    }
+
+    document.getElementById("refresh-fleet-btn").addEventListener("click", fetchFleet);
+    document.getElementById("refresh-db-btn").addEventListener("click", fetchDrivers);
+
+    // --- FLEET MANAGEMENT LOGIC ---
+    let currentActiveVehicle = null;
+    let isFleetEditMode = false;
+    const fleetPlateInput = document.getElementById("fleet-plate-input");
+    const toggleFleetBtn = document.getElementById("toggle-fleet-btn");
+    const fleetDropdown = document.getElementById("fleet-dropdown");
+    const fleetProfileContainer = document.getElementById("fleet-profile-container");
+    const editFleetBtn = document.getElementById("edit-fleet-btn");
+    const cancelFleetEditBtn = document.getElementById("cancel-fleet-edit-btn");
+
+    function populateFleetDropdown(items) {
+      fleetDropdown.innerHTML = "";
+      if (items.length === 0) { fleetDropdown.style.display = "none"; return; }
+      items.forEach(v => {
+        const plate = String(v["Plate"] || "");
+        const mod = String(v["Model"] || "");
+        const div = document.createElement("div");
+        div.className = "custom-dropdown-item";
+        div.textContent = `${plate} - ${mod}`;
+        div.addEventListener("click", () => {
+          fleetPlateInput.value = plate;
+          renderVehicleProfile(v);
+          fleetDropdown.style.display = "none";
+        });
+        fleetDropdown.appendChild(div);
+      });
+      fleetDropdown.style.display = "block";
+    }
+
+    toggleFleetBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (fleetDropdown.style.display === "block") { fleetDropdown.style.display = "none"; }
+      else {
+        const val = fleetPlateInput.value.trim().toLowerCase();
+        populateFleetDropdown(val === "" ? fleetDatabase : fleetDatabase.filter(v => String(v["Plate"] || "").toLowerCase().includes(val)));
+      }
+    });
+
+    fleetPlateInput.addEventListener("input", () => {
+      const val = fleetPlateInput.value.trim().toLowerCase();
+      if (val === "") { fleetProfileContainer.style.display = "none"; fleetDropdown.style.display = "none"; return; }
+      const matches = fleetDatabase.filter(v => String(v["Plate"] || "").toLowerCase().includes(val));
+      populateFleetDropdown(matches);
+      const exact = fleetDatabase.find(v => String(v["Plate"] || "").toLowerCase() === val);
+      if (exact) { renderVehicleProfile(exact); fleetDropdown.style.display = "none"; }
+      else { fleetProfileContainer.style.display = "none"; }
+    });
+
+    document.addEventListener("click", (e) => { if (!e.target.closest(".search-wrapper")) fleetDropdown.style.display = "none"; });
+
+    function renderVehicleProfile(vehicle) {
+      currentActiveVehicle = vehicle;
+      isFleetEditMode = false;
+      editFleetBtn.textContent = "Edit Vehicle Details";
+      editFleetBtn.style.background = "var(--primary)";
+      cancelFleetEditBtn.style.display = "none";
+
+      const vehiclePlate = String(vehicle["Plate"] || "").trim().toLowerCase();
+
+      // BÚSQUEDA DINÁMICA: Encuentra hasta 2 conductores asignados a esta placa
+      const assignedDrivers = driversDatabase.filter(d => String(d["Car Plate"] || "").trim().toLowerCase() === vehiclePlate);
+
+      let driversHtml = "";
+      if (assignedDrivers.length === 0) {
+        driversHtml = `<span style="color: var(--text-muted); font-weight: normal;">No drivers assigned</span>`;
+      } else {
+        driversHtml = `<div class="driver-tag-box">`;
+        assignedDrivers.forEach((d, idx) => {
+          const shiftText = d["Shift"] ? ` (${d["Shift"]})` : '';
+          driversHtml += `
+            <div class="driver-tag">
+              <strong>Driver ${idx + 1}:</strong> ${d["Full Name"]} | <strong>Iqama:</strong> ${d["Iqama Number"]}${shiftText}
+            </div>`;
+        });
+        driversHtml += `</div>`;
+      }
+
+      document.getElementById("profile-vehicle-name").textContent = vehicle["Plate"] + " - Profile";
+      document.getElementById("f-val-plate").innerHTML = vehicle["Plate"] || "-";
+      document.getElementById("f-val-brand").innerHTML = vehicle["Brand"] || "-";
+      document.getElementById("f-val-model").innerHTML = vehicle["Model"] || "-";
+      document.getElementById("f-val-vin").innerHTML = vehicle["VIN"] || "-";
+      document.getElementById("f-val-fuel").innerHTML = vehicle["Fuel Type"] || "-";
+      
+      // Renderizar los conductores enlazados automáticamente
+      document.getElementById("f-val-assigned-drivers").innerHTML = driversHtml;
+
+      document.getElementById("f-val-km").innerHTML = vehicle["Total KM"] || "-";
+      document.getElementById("f-val-availability").innerHTML = vehicle["Availability"] || "Unassigned";
+      document.getElementById("f-val-accidents").innerHTML = vehicle["Accidents"] || "0";
+      document.getElementById("f-val-mantenimiento").innerHTML = formatDateForDisplay(vehicle["Last Maintenance"]);
+      document.getElementById("f-val-oil").innerHTML = formatDateForDisplay(vehicle["Last Oil Change"]);
+      document.getElementById("f-val-ins-start").innerHTML = formatDateForDisplay(vehicle["Insurance Start Date"]);
+      document.getElementById("f-val-ins-exp").innerHTML = formatDateForDisplay(vehicle["Insurance Expiry Date"]);
+      document.getElementById("f-val-op-start").innerHTML = formatDateForDisplay(vehicle["Operation Card Start Date"]);
+      document.getElementById("f-val-op-exp").innerHTML = formatDateForDisplay(vehicle["Operation Card Expiry Date"]);
+
+      fleetProfileContainer.style.display = "block";
+    }
+
+    function enableFleetEditMode() {
+      if (!currentActiveVehicle) return;
+      isFleetEditMode = true;
+      editFleetBtn.textContent = "💾 Save Changes";
+      editFleetBtn.style.background = "var(--success)";
+      cancelFleetEditBtn.style.display = "inline-block";
+
+      const v = currentActiveVehicle;
+      document.getElementById("f-val-plate").innerHTML = `<input type="text" id="edit-plate" value="${v["Plate"] || ''}">`;
+      document.getElementById("f-val-brand").innerHTML = `<input type="text" id="edit-brand" value="${v["Brand"] || ''}">`;
+      document.getElementById("f-val-model").innerHTML = `<input type="text" id="edit-model" value="${v["Model"] || ''}">`;
+      document.getElementById("f-val-vin").innerHTML = `<input type="text" id="edit-vin" value="${v["VIN"] || ''}">`;
+      
+      const fuel = v["Fuel Type"] || "";
+      document.getElementById("f-val-fuel").innerHTML = `<select id="edit-fuel"><option value="Gasoline" ${fuel==="Gasoline"?"selected":""}>Gasoline</option><option value="Hybrid" ${fuel==="Hybrid"?"selected":""}>Hybrid</option><option value="Electric" ${fuel==="Electric"?"selected":""}>Electric</option></select>`;
+
+      document.getElementById("f-val-km").innerHTML = `<input type="text" id="edit-km" value="${v["Total KM"] || ''}">`;
+      
+      const avail = v["Availability"] || "Unassigned";
+      document.getElementById("f-val-availability").innerHTML = `
+        <select id="edit-availability">
+          <option value="Assigned" ${avail==="Assigned"?"selected":""}>Assigned</option>
+          <option value="Unassigned" ${avail==="Unassigned"?"selected":""}>Unassigned</option>
+          <option value="Under Maintenance" ${avail==="Under Maintenance"?"selected":""}>Under Maintenance</option>
+        </select>
+      `;
+
+      document.getElementById("f-val-accidents").innerHTML = `<input type="text" id="edit-acc" value="${v["Accidents"] || ''}">`;
+      document.getElementById("f-val-mantenimiento").innerHTML = `<input type="date" id="edit-mant" value="${formatDateForInput(v["Last Maintenance"])}">`;
+      document.getElementById("f-val-oil").innerHTML = `<input type="date" id="edit-oil" value="${formatDateForInput(v["Last Oil Change"])}">`;
+      document.getElementById("f-val-ins-start").innerHTML = `<input type="date" id="edit-ins-start" value="${formatDateForInput(v["Insurance Start Date"])}">`;
+      document.getElementById("f-val-ins-exp").innerHTML = `<input type="date" id="edit-ins-exp" value="${formatDateForInput(v["Insurance Expiry Date"])}">`;
+      document.getElementById("f-val-op-start").innerHTML = `<input type="date" id="edit-op-start" value="${formatDateForInput(v["Operation Card Start Date"])}">`;
+      document.getElementById("f-val-op-exp").innerHTML = `<input type="date" id="edit-op-exp" value="${formatDateForInput(v["Operation Card Expiry Date"])}">`;
+    }
+
+    async function saveFleetChanges() {
+      const updatedVehicle = {
+        "Plate": document.getElementById("edit-plate").value.trim(),
+        "Brand": document.getElementById("edit-brand").value.trim(),
+        "Model": document.getElementById("edit-model").value.trim(),
+        "VIN": document.getElementById("edit-vin").value.trim(),
+        "Fuel Type": document.getElementById("edit-fuel").value,
+        "Total KM": document.getElementById("edit-km").value.trim(),
+        "Availability": document.getElementById("edit-availability").value,
+        "Accidents": document.getElementById("edit-acc").value.trim(),
+        "Last Maintenance": document.getElementById("edit-mant").value,
+        "Last Oil Change": document.getElementById("edit-oil").value,
+        "Insurance Start Date": document.getElementById("edit-ins-start").value,
+        "Insurance Expiry Date": document.getElementById("edit-ins-exp").value,
+        "Operation Card Start Date": document.getElementById("edit-op-start").value,
+        "Operation Card Expiry Date": document.getElementById("edit-op-exp").value
+      };
+
+      editFleetBtn.disabled = true;
+      editFleetBtn.textContent = "Saving...";
+
+      try {
+        const res = await fetch(GOOGLE_SHEET_FLEET_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify(updatedVehicle)
+        });
+        const resData = await res.json();
+        if (resData.status === "success") {
+          const idx = fleetDatabase.findIndex(v => String(v["Plate"]).trim() === String(currentActiveVehicle["Plate"]).trim());
+          if (idx !== -1) fleetDatabase[idx] = updatedVehicle;
+
+          fleetPlateInput.value = updatedVehicle["Plate"];
+          renderVehicleProfile(updatedVehicle);
+          alert("Vehicle details updated successfully!");
         }
+      } catch (err) {
+        alert("Error saving vehicle.");
+      } finally {
+        editFleetBtn.disabled = false;
       }
-      return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
     }
-    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "Vehicle not found" })).setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
+
+    editFleetBtn.addEventListener("click", () => {
+      if (!isFleetEditMode) enableFleetEditMode();
+      else saveFleetChanges();
+    });
+
+    cancelFleetEditBtn.addEventListener("click", () => {
+      if (currentActiveVehicle) renderVehicleProfile(currentActiveVehicle);
+    });
+
+    // --- DRIVERS MANAGEMENT LOGIC ---
+    let currentActiveDriver = null;
+    let isEditMode = false;
+    const iqamaInput = document.getElementById("driver-iqama-input");
+    const nameInput = document.getElementById("driver-name-input");
+    const toggleIqamaBtn = document.getElementById("toggle-iqama-btn");
+    const toggleNameBtn = document.getElementById("toggle-name-btn");
+    const iqamaDropdown = document.getElementById("iqama-dropdown");
+    const nameDropdown = document.getElementById("name-dropdown");
+    const profileContainer = document.getElementById("driver-profile-container");
+    const editDriverBtn = document.getElementById("edit-driver-btn");
+    const cancelEditBtn = document.getElementById("cancel-edit-btn");
+
+    function populateDriverDropdown(dropdownElement, items, type) {
+      dropdownElement.innerHTML = "";
+      if (items.length === 0) { dropdownElement.style.display = "none"; return; }
+      items.forEach(driver => {
+        const iqamaVal = String(driver["Iqama Number"] || "");
+        const nameVal = String(driver["Full Name"] || "");
+        const div = document.createElement("div");
+        div.className = "custom-dropdown-item";
+        div.textContent = type === 'iqama' ? `${iqamaVal} - ${nameVal}` : `${nameVal} (${iqamaVal})`;
+        div.addEventListener("click", () => {
+          iqamaInput.value = iqamaVal;
+          nameInput.value = nameVal;
+          renderDriverProfile(driver);
+          dropdownElement.style.display = "none";
+        });
+        dropdownElement.appendChild(div);
+      });
+      dropdownElement.style.display = "block";
+    }
+
+    toggleIqamaBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (iqamaDropdown.style.display === "block") iqamaDropdown.style.display = "none";
+      else {
+        nameDropdown.style.display = "none";
+        const val = iqamaInput.value.trim().toLowerCase();
+        populateDriverDropdown(iqamaDropdown, val === "" ? driversDatabase : driversDatabase.filter(d => String(d["Iqama Number"] || "").toLowerCase().includes(val)), 'iqama');
+      }
+    });
+
+    toggleNameBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (nameDropdown.style.display === "block") nameDropdown.style.display = "none";
+      else {
+        iqamaDropdown.style.display = "none";
+        const val = nameInput.value.trim().toLowerCase();
+        populateDriverDropdown(nameDropdown, val === "" ? driversDatabase : driversDatabase.filter(d => String(d["Full Name"] || "").toLowerCase().includes(val)), 'name');
+      }
+    });
+
+    iqamaInput.addEventListener("input", () => {
+      const val = iqamaInput.value.trim().toLowerCase();
+      if (val === "") { profileContainer.style.display = "none"; nameInput.value = ""; return; }
+      const matches = driversDatabase.filter(d => String(d["Iqama Number"] || "").toLowerCase().includes(val));
+      populateDriverDropdown(iqamaDropdown, matches, 'iqama');
+      const exact = driversDatabase.find(d => String(d["Iqama Number"] || "").toLowerCase() === val);
+      if (exact) { nameInput.value = exact["Full Name"] || ""; renderDriverProfile(exact); iqamaDropdown.style.display = "none"; }
+      else { profileContainer.style.display = "none"; }
+    });
+
+    nameInput.addEventListener("input", () => {
+      const val = nameInput.value.trim().toLowerCase();
+      if (val === "") { profileContainer.style.display = "none"; iqamaInput.value = ""; return; }
+      const matches = driversDatabase.filter(d => String(d["Full Name"] || "").toLowerCase().includes(val));
+      populateDriverDropdown(nameDropdown, matches, 'name');
+      const exact = driversDatabase.find(d => String(d["Full Name"] || "").toLowerCase() === val);
+      if (exact) { iqamaInput.value = exact["Iqama Number"] || ""; renderDriverProfile(exact); nameDropdown.style.display = "none"; }
+      else { profileContainer.style.display = "none"; }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".search-wrapper")) { iqamaDropdown.style.display = "none"; nameDropdown.style.display = "none"; }
+    });
+
+    function renderDriverProfile(driver) {
+      currentActiveDriver = driver;
+      isEditMode = false;
+      editDriverBtn.textContent = "Edit Driver Details";
+      editDriverBtn.style.background = "var(--primary)";
+      cancelEditBtn.style.display = "none";
+
+      document.getElementById("profile-driver-name").textContent = (driver["Full Name"] || "Driver") + " - Profile";
+      document.getElementById("val-iqama").innerHTML = driver["Iqama Number"] || "-";
+      document.getElementById("val-name").innerHTML = driver["Full Name"] || "-";
+      document.getElementById("val-nationality").innerHTML = driver["Nationality"] || "-";
+      document.getElementById("val-passport").innerHTML = driver["Passport Number"] || "-";
+      document.getElementById("val-tid").innerHTML = driver["TID"] || "-";
+      document.getElementById("val-passport-exp").innerHTML = formatDateForDisplay(driver["Passport Expiry Date"]);
+      document.getElementById("val-iqama-issue").innerHTML = formatDateForDisplay(driver["Iqama Issue Date"]);
+      document.getElementById("val-dob").innerHTML = formatDateForDisplay(driver["Date of Birth"]);
+      document.getElementById("val-iqama-exp").innerHTML = formatDateForDisplay(driver["Iqama Expiry Date"]);
+      document.getElementById("val-work-start").innerHTML = formatDateForDisplay(driver["Employment Start Date"]);
+      document.getElementById("val-phone").innerHTML = driver["Phone Number"] || "-";
+      document.getElementById("val-driver-id").innerHTML = driver["Driver ID"] || "-";
+      document.getElementById("val-arrangement").innerHTML = driver["Arrangement"] || "-";
+      
+      const licenseVal = driver["KSA Driving License Date"];
+      document.getElementById("val-license-date").innerHTML = (licenseVal && licenseVal !== "Not Yet") ? formatDateForDisplay(licenseVal) : "Not Yet";
+
+      document.getElementById("val-shift").innerHTML = driver["Shift"] || "-";
+      document.getElementById("val-car-plate").innerHTML = driver["Car Plate"] || "-";
+      document.getElementById("val-status").innerHTML = driver["Status"] || "-";
+
+      profileContainer.style.display = "block";
+    }
+
+    function enableEditMode() {
+      if (!currentActiveDriver) return;
+      isEditMode = true;
+      editDriverBtn.textContent = "💾 Save Changes";
+      editDriverBtn.style.background = "var(--success)";
+      cancelEditBtn.style.display = "inline-block";
+
+      const d = currentActiveDriver;
+      document.getElementById("val-iqama").innerHTML = `<input type="text" id="edit-iqama" value="${d["Iqama Number"] || ''}">`;
+      document.getElementById("val-name").innerHTML = `<input type="text" id="edit-name" value="${d["Full Name"] || ''}">`;
+      document.getElementById("val-nationality").innerHTML = `<input type="text" id="edit-nationality" value="${d["Nationality"] || ''}">`;
+      document.getElementById("val-passport").innerHTML = `<input type="text" id="edit-passport" value="${d["Passport Number"] || ''}">`;
+      document.getElementById("val-tid").innerHTML = `<input type="text" id="edit-tid" value="${d["TID"] || ''}">`;
+      
+      document.getElementById("val-passport-exp").innerHTML = `<input type="date" id="edit-passport-exp" value="${formatDateForInput(d["Passport Expiry Date"])}">`;
+      document.getElementById("val-iqama-issue").innerHTML = `<input type="date" id="edit-iqama-issue" value="${formatDateForInput(d["Iqama Issue Date"])}">`;
+      document.getElementById("val-dob").innerHTML = `<input type="date" id="edit-dob" value="${formatDateForInput(d["Date of Birth"])}">`;
+      document.getElementById("val-iqama-exp").innerHTML = `<input type="date" id="edit-iqama-exp" value="${formatDateForInput(d["Iqama Expiry Date"])}">`;
+      document.getElementById("val-work-start").innerHTML = `<input type="date" id="edit-work-start" value="${formatDateForInput(d["Employment Start Date"])}">`;
+      
+      document.getElementById("val-phone").innerHTML = `<input type="text" id="edit-phone" value="${d["Phone Number"] || ''}">`;
+      document.getElementById("val-driver-id").innerHTML = `<input type="text" id="edit-driver-id" value="${d["Driver ID"] || ''}">`;
+      
+      const arrVal = d["Arrangement"] || "";
+      document.getElementById("val-arrangement").innerHTML = `<select id="edit-arrangement"><option value="Salary" ${arrVal==="Salary"?"selected":""}>Salary</option><option value="270 SAR per day" ${arrVal==="270 SAR per day"?"selected":""}>270 SAR per day</option></select>`;
+      
+      const licDate = (d["KSA Driving License Date"] && d["KSA Driving License Date"] !== "Not Yet") ? formatDateForInput(d["KSA Driving License Date"]) : "";
+      document.getElementById("val-license-date").innerHTML = `<input type="date" id="edit-license-date" value="${licDate}">`;
+      
+      const shiftVal = d["Shift"] || "";
+      document.getElementById("val-shift").innerHTML = `<select id="edit-shift"><option value="Night Shift" ${shiftVal==="Night Shift"?"selected":""}>Night Shift</option><option value="Day Shift" ${shiftVal==="Day Shift"?"selected":""}>Day Shift</option></select>`;
+      
+      // Select de Car Plate basado en las placas de Fleet
+      let plateOptions = `<option value="">-- Unassigned --</option>`;
+      fleetDatabase.forEach(v => {
+        const sel = (d["Car Plate"] === v["Plate"]) ? "selected" : "";
+        plateOptions += `<option value="${v["Plate"]}" ${sel}>${v["Plate"]} (${v["Model"]})</option>`;
+      });
+      document.getElementById("val-car-plate").innerHTML = `<select id="edit-car-plate">${plateOptions}</select>`;
+      
+      const statusVal = d["Status"] || "";
+      document.getElementById("val-status").innerHTML = `<select id="edit-status"><option value="Available" ${statusVal==="Available"?"selected":""}>Available</option><option value="Not Available" ${statusVal==="Not Available"?"selected":""}>Not Available</option><option value="No Longer in the Project" ${statusVal==="No Longer in the Project"?"selected":""}>No Longer in the Project</option></select>`;
+    }
+
+    async function saveEditedDriver() {
+      const selectedPlate = document.getElementById("edit-car-plate").value;
+      const licInputVal = document.getElementById("edit-license-date").value.trim();
+
+      const updatedDriver = {
+        "Iqama Number": document.getElementById("edit-iqama").value.trim(),
+        "Full Name": document.getElementById("edit-name").value.trim(),
+        "Nationality": document.getElementById("edit-nationality").value.trim(),
+        "Passport Number": document.getElementById("edit-passport").value.trim(),
+        "TID": document.getElementById("edit-tid").value.trim(),
+        "Passport Expiry Date": document.getElementById("edit-passport-exp").value,
+        "Iqama Issue Date": document.getElementById("edit-iqama-issue").value,
+        "Date of Birth": document.getElementById("edit-dob").value,
+        "Iqama Expiry Date": document.getElementById("edit-iqama-exp").value,
+        "Employment Start Date": document.getElementById("edit-work-start").value,
+        "Phone Number": document.getElementById("edit-phone").value.trim(),
+        "Driver ID": document.getElementById("edit-driver-id").value.trim(),
+        "Arrangement": document.getElementById("edit-arrangement").value,
+        "KSA Driving License Date": licInputVal !== "" ? licInputVal : "Not Yet",
+        "Shift": document.getElementById("edit-shift").value,
+        "Car Plate": selectedPlate,
+        "Status": document.getElementById("edit-status").value
+      };
+
+      editDriverBtn.disabled = true;
+      editDriverBtn.textContent = "Saving...";
+
+      try {
+        const response = await fetch(GOOGLE_SHEET_DRIVERS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify(updatedDriver)
+        });
+        const resData = await response.json();
+        if (resData.status === "success") {
+          const index = driversDatabase.findIndex(d => String(d["Iqama Number"]).trim() === String(currentActiveDriver["Iqama Number"]).trim());
+          if (index !== -1) driversDatabase[index] = updatedDriver;
+
+          iqamaInput.value = updatedDriver["Iqama Number"];
+          nameInput.value = updatedDriver["Full Name"];
+          renderDriverProfile(updatedDriver);
+          alert("Driver updated successfully!");
+        }
+      } catch (err) {
+        alert("Could not update Google Sheets.");
+      } finally {
+        editDriverBtn.disabled = false;
+      }
+    }
+
+    editDriverBtn.addEventListener("click", () => {
+      if (!isEditMode) enableEditMode();
+      else saveEditedDriver();
+    });
+
+    cancelEditBtn.addEventListener("click", () => {
+      if (currentActiveDriver) renderDriverProfile(currentActiveDriver);
+    });
+  </script>
+</body>
+</html>
