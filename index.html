@@ -384,8 +384,8 @@
                 <div class="field-item"><div class="field-label">Model</div><div class="field-value" id="f-val-model">-</div></div>
                 <div class="field-item"><div class="field-label">VIN</div><div class="field-value" id="f-val-vin">-</div></div>
                 <div class="field-item"><div class="field-label">Fuel Type</div><div class="field-value" id="f-val-fuel">-</div></div>
-                <div class="field-item"><div class="field-label">Driver Name</div><div class="field-value" id="f-val-driver-name">-</div></div>
-                <div class="field-item"><div class="field-label">Driver Iqama</div><div class="field-value" id="f-val-driver-iqama">-</div></div>
+                <div class="field-item"><div class="field-label">Driver Name</div><div class="field-value" id="f-val-driver-name">Unassigned (Linked from Drivers)</div></div>
+                <div class="field-item"><div class="field-label">Driver Iqama</div><div class="field-value" id="f-val-driver-iqama">Unassigned (Linked from Drivers)</div></div>
                 <div class="field-item"><div class="field-label">Total KM</div><div class="field-value" id="f-val-km">-</div></div>
                 <div class="field-item"><div class="field-label">Availability</div><div class="field-value" id="f-val-availability">-</div></div>
                 <div class="field-item"><div class="field-label">Accidents</div><div class="field-value" id="f-val-accidents">-</div></div>
@@ -689,12 +689,15 @@
 
       document.getElementById("profile-vehicle-name").textContent = vehicle["Plate"] + " - Profile";
       document.getElementById("f-val-plate").innerHTML = vehicle["Plate"] || "-";
-      document.getElementById("f-val-brand").innerHTML = vehicle["Brand"] || "Unassigned";
+      document.getElementById("f-val-brand").innerHTML = vehicle["Brand"] || "-";
       document.getElementById("f-val-model").innerHTML = vehicle["Model"] || "-";
       document.getElementById("f-val-vin").innerHTML = vehicle["VIN"] || "-";
       document.getElementById("f-val-fuel").innerHTML = vehicle["Fuel Type"] || "-";
+      
+      // Bloqueados y sincronizados desde Drivers
       document.getElementById("f-val-driver-name").innerHTML = vehicle["Driver Name"] || "Unassigned";
       document.getElementById("f-val-driver-iqama").innerHTML = vehicle["Driver Iqama"] || "Unassigned";
+
       document.getElementById("f-val-km").innerHTML = vehicle["Total KM"] || "-";
       document.getElementById("f-val-availability").innerHTML = vehicle["Availability"] || "Unassigned";
       document.getElementById("f-val-accidents").innerHTML = vehicle["Accidents"] || "0";
@@ -724,14 +727,9 @@
       const fuel = v["Fuel Type"] || "";
       document.getElementById("f-val-fuel").innerHTML = `<select id="edit-fuel"><option value="Gasoline" ${fuel==="Gasoline"?"selected":""}>Gasoline</option><option value="Hybrid" ${fuel==="Hybrid"?"selected":""}>Hybrid</option><option value="Electric" ${fuel==="Electric"?"selected":""}>Electric</option></select>`;
 
-      let driverOptions = `<option value="">-- Unassigned --</option>`;
-      driversDatabase.forEach(d => {
-        const selected = (v["Driver Iqama"] === d["Iqama Number"]) ? "selected" : "";
-        driverOptions += `<option value="${d["Iqama Number"]}" ${selected}>${d["Full Name"]} (${d["Iqama Number"]})</option>`;
-      });
-
-      document.getElementById("f-val-driver-iqama").innerHTML = `<select id="edit-driver-select">${driverOptions}</select>`;
-      document.getElementById("f-val-driver-name").innerHTML = `(Auto-linked)`;
+      // IMPORTANTE: Driver Name y Driver Iqama se mantienen BLOQUEADOS/SIN CAMBIO AQUÍ porque se controlan desde Drivers Management
+      document.getElementById("f-val-driver-name").innerHTML = (v["Driver Name"] || "Unassigned") + " <i>(Managed in Drivers)</i>";
+      document.getElementById("f-val-driver-iqama").innerHTML = (v["Driver Iqama"] || "Unassigned") + " <i>(Managed in Drivers)</i>";
 
       document.getElementById("f-val-km").innerHTML = `<input type="text" id="edit-km" value="${v["Total KM"] || ''}">`;
       
@@ -754,21 +752,15 @@
     }
 
     async function saveFleetChanges() {
-      const selectedIqama = document.getElementById("edit-driver-select").value;
-      let assignedName = "";
-      if (selectedIqama) {
-        const foundDriver = driversDatabase.find(d => String(d["Iqama Number"]) === String(selectedIqama));
-        if (foundDriver) assignedName = foundDriver["Full Name"];
-      }
-
+      const v = currentActiveVehicle;
       const updatedVehicle = {
         "Plate": document.getElementById("edit-plate").value.trim(),
         "Brand": document.getElementById("edit-brand").value.trim(),
         "Model": document.getElementById("edit-model").value.trim(),
         "VIN": document.getElementById("edit-vin").value.trim(),
         "Fuel Type": document.getElementById("edit-fuel").value,
-        "Driver Name": assignedName,
-        "Driver Iqama": selectedIqama,
+        "Driver Name": v["Driver Name"] || "", // Se mantiene el asignado por Drivers
+        "Driver Iqama": v["Driver Iqama"] || "", // Se mantiene el asignado por Drivers
         "Total KM": document.getElementById("edit-km").value.trim(),
         "Availability": document.getElementById("edit-availability").value,
         "Accidents": document.getElementById("edit-acc").value.trim(),
@@ -794,21 +786,9 @@
           const idx = fleetDatabase.findIndex(v => String(v["Plate"]).trim() === String(currentActiveVehicle["Plate"]).trim());
           if (idx !== -1) fleetDatabase[idx] = updatedVehicle;
 
-          if (selectedIqama) {
-            const driverIdx = driversDatabase.findIndex(d => String(d["Iqama Number"]).trim() === String(selectedIqama).trim());
-            if (driverIdx !== -1) {
-              driversDatabase[driverIdx]["Car Plate"] = updatedVehicle["Plate"];
-              await fetch(GOOGLE_SHEET_DRIVERS_URL, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain" },
-                body: JSON.stringify(driversDatabase[driverIdx])
-              });
-            }
-          }
-
           fleetPlateInput.value = updatedVehicle["Plate"];
           renderVehicleProfile(updatedVehicle);
-          alert("Vehicle updated successfully and synced with drivers!");
+          alert("Vehicle details updated successfully!");
         }
       } catch (err) {
         alert("Error saving vehicle.");
@@ -967,6 +947,7 @@
       const shiftVal = d["Shift"] || "";
       document.getElementById("val-shift").innerHTML = `<select id="edit-shift"><option value="Night Shift" ${shiftVal==="Night Shift"?"selected":""}>Night Shift</option><option value="Day Shift" ${shiftVal==="Day Shift"?"selected":""}>Day Shift</option></select>`;
       
+      // Select de Car Plate basado en las placas de Fleet
       let plateOptions = `<option value="">-- Unassigned --</option>`;
       fleetDatabase.forEach(v => {
         const sel = (d["Car Plate"] === v["Plate"]) ? "selected" : "";
@@ -1016,6 +997,7 @@
           const index = driversDatabase.findIndex(d => String(d["Iqama Number"]).trim() === String(currentActiveDriver["Iqama Number"]).trim());
           if (index !== -1) driversDatabase[index] = updatedDriver;
 
+          // Sincronizar automáticamente en Fleet Management si se seleccionó una placa
           if (selectedPlate) {
             const vehicle = fleetDatabase.find(v => String(v["Plate"]).trim() === String(selectedPlate).trim());
             if (vehicle) {
