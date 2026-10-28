@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Taxi Qaid</title>
+  <title>Taxi Qaid ERP</title>
   
   <!-- Client-side PDF Generation Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -743,11 +743,11 @@
         </section>
 
         <!-- Other views placeholder -->
-        <section id="view-pretrip" class="view-section"><div class="card"><h2>Pre-Trip Check</h2><p>Pending...</p></div></section>
-        <section id="view-posttrip" class="view-section"><div class="card"><h2>Post-Trip Check</h2><p>Pending...</p></div></section>
-        <section id="view-breakdowns" class="view-section"><div class="card"><h2>Breakdowns Tracker</h2><p>Pending...</p></div></section>
-        <section id="view-maintenance" class="view-section"><div class="card"><h2>Maintenance Tracker</h2><p>Pending...</p></div></section>
-        <section id="view-accidents" class="view-section"><div class="card"><h2>Accident Tracker</h2><p>Pending...</p></div></section>
+        <section id="view-pretrip" class="view-section"><div class="card"><h2>Pre-Trip Check</h2><p style="margin-top:10px; color:var(--text-muted);">Module pending development...</p></div></section>
+        <section id="view-posttrip" class="view-section"><div class="card"><h2>Post-Trip Check</h2><p style="margin-top:10px; color:var(--text-muted);">Module pending development...</p></div></section>
+        <section id="view-breakdowns" class="view-section"><div class="card"><h2>Breakdowns Tracker</h2><p style="margin-top:10px; color:var(--text-muted);">Module pending development...</p></div></section>
+        <section id="view-maintenance" class="view-section"><div class="card"><h2>Maintenance Tracker</h2><p style="margin-top:10px; color:var(--text-muted);">Module pending development...</p></div></section>
+        <section id="view-accidents" class="view-section"><div class="card"><h2>Accident Tracker</h2><p style="margin-top:10px; color:var(--text-muted);">Module pending development...</p></div></section>
 
       </main>
     </div>
@@ -781,6 +781,78 @@
     let driversDatabase = [];
     let fleetDatabase = [];
 
+    // DOM Elements
+    const loginScreen = document.getElementById("login-screen");
+    const erpApp = document.getElementById("erp-app");
+    const loginForm = document.getElementById("login-form");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const errorMessage = document.getElementById("error-message");
+    const loginButton = document.getElementById("login-button");
+    const logoutButton = document.getElementById("logout-button");
+    const sidebar = document.getElementById("sidebar");
+    const sidebarToggle = document.getElementById("sidebar-toggle");
+
+    // Sidebar Collapse Toggle
+    sidebarToggle.addEventListener("click", () => {
+      sidebar.classList.toggle("collapsed");
+      sidebarToggle.textContent = sidebar.classList.contains("collapsed") ? "▶" : "◀";
+    });
+
+    // Login Logic
+    loginForm.addEventListener("submit", async function(e) {
+      e.preventDefault();
+      errorMessage.hidden = true;
+      loginButton.disabled = true;
+      loginButton.textContent = "Signing in...";
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+
+      try {
+        const email = username.toLowerCase() + "@taxiqaiddemand.com";
+        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+        if (authError) throw authError;
+
+        const { data: profile, error: profileError } = await supabaseClient
+          .from("taxiqaid_roles")
+          .select("role")
+          .eq("user_id", authData.user.id)
+          .maybeSingle();
+
+        if (profileError) throw profileError;
+        if (!profile) {
+          await supabaseClient.auth.signOut();
+          throw new Error("No authorized role found.");
+        }
+
+        loginScreen.style.display = "none";
+        erpApp.style.display = "flex";
+        
+        fetchDrivers();
+        fetchFleet();
+
+      } catch (error) {
+        console.error("Login error:", error);
+        errorMessage.textContent = "Unable to sign in. Check your credentials.";
+        errorMessage.hidden = false;
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = "Sign In";
+      }
+    });
+
+    // Logout Action
+    logoutButton.addEventListener("click", async () => {
+      await supabaseClient.auth.signOut();
+      erpApp.style.display = "none";
+      loginScreen.style.display = "flex";
+      loginForm.reset();
+    });
+
     // Navigation View Switcher
     const menuItems = document.querySelectorAll(".sidebar-menu li");
     const viewSections = document.querySelectorAll(".view-section");
@@ -803,6 +875,21 @@
         }
       });
     });
+
+    // --- HELPER FUNCTIONS FOR DATES ---
+    function formatDateForDisplay(d) {
+      if (!d || String(d).trim() === "" || d === "Not Yet") return "-";
+      let s = String(d);
+      return s.includes("T") ? s.split("T")[0] : s;
+    }
+
+    function formatDateForInput(d) {
+      if (!d || String(d).trim() === "" || d === "Not Yet") return "";
+      let s = String(d);
+      if (s.includes("T")) return s.split("T")[0];
+      const parsed = new Date(d);
+      return isNaN(parsed.getTime()) ? "" : parsed.toISOString().split('T')[0];
+    }
 
     // --- FLEET MANAGEMENT LOGIC ---
     let currentActiveVehicle = null;
@@ -891,19 +978,6 @@
     document.addEventListener("click", (e) => {
       if (!e.target.closest(".search-wrapper")) hideFleetDropdown();
     });
-
-    function formatDateForDisplay(d) {
-      if (!d || String(d).trim() === "" || d === "Not Yet") return "-";
-      let s = String(d);
-      return s.includes("T") ? s.split("T")[0] : s;
-    }
-    function formatDateForInput(d) {
-      if (!d || String(d).trim() === "" || d === "Not Yet") return "";
-      let s = String(d);
-      if (s.includes("T")) return s.split("T")[0];
-      const parsed = new Date(d);
-      return isNaN(parsed.getTime()) ? "" : parsed.toISOString().split('T')[0];
-    }
 
     function renderVehicleProfile(vehicle) {
       currentActiveVehicle = vehicle;
