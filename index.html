@@ -406,7 +406,6 @@
                 <div class="field-item"><div class="field-label">VIN</div><div class="field-value" id="f-val-vin">-</div></div>
                 <div class="field-item"><div class="field-label">Fuel Type</div><div class="field-value" id="f-val-fuel">-</div></div>
                 
-                <!-- Sección Dinámica para hasta 2 conductores asignados -->
                 <div class="field-item full-width">
                   <div class="field-label">Assigned Drivers (Auto-Synced from Drivers DB)</div>
                   <div class="field-value" id="f-val-assigned-drivers">No drivers assigned</div>
@@ -701,8 +700,6 @@
       cancelFleetEditBtn.style.display = "none";
 
       const vehiclePlate = String(vehicle["Plate"] || "").trim().toLowerCase();
-
-      // BÚSQUEDA DINÁMICA: Encuentra hasta 2 conductores asignados a esta placa
       const assignedDrivers = driversDatabase.filter(d => String(d["Car Plate"] || "").trim().toLowerCase() === vehiclePlate);
 
       let driversHtml = "";
@@ -720,6 +717,12 @@
         driversHtml += `</div>`;
       }
 
+      // REGLA AUTOMÁTICA DE AVAILABILITY: Si tiene drivers -> Assigned. Si no -> respeta o Unassigned.
+      let currentAvailability = vehicle["Availability"] || "Unassigned";
+      if (assignedDrivers.length > 0) {
+        currentAvailability = "Assigned";
+      }
+
       document.getElementById("profile-vehicle-name").textContent = vehicle["Plate"] + " - Profile";
       document.getElementById("f-val-plate").innerHTML = vehicle["Plate"] || "-";
       document.getElementById("f-val-brand").innerHTML = vehicle["Brand"] || "-";
@@ -727,11 +730,10 @@
       document.getElementById("f-val-vin").innerHTML = vehicle["VIN"] || "-";
       document.getElementById("f-val-fuel").innerHTML = vehicle["Fuel Type"] || "-";
       
-      // Renderizar los conductores enlazados automáticamente
       document.getElementById("f-val-assigned-drivers").innerHTML = driversHtml;
 
       document.getElementById("f-val-km").innerHTML = vehicle["Total KM"] || "-";
-      document.getElementById("f-val-availability").innerHTML = vehicle["Availability"] || "Unassigned";
+      document.getElementById("f-val-availability").innerHTML = currentAvailability;
       document.getElementById("f-val-accidents").innerHTML = vehicle["Accidents"] || "0";
       document.getElementById("f-val-mantenimiento").innerHTML = formatDateForDisplay(vehicle["Last Maintenance"]);
       document.getElementById("f-val-oil").innerHTML = formatDateForDisplay(vehicle["Last Oil Change"]);
@@ -751,6 +753,9 @@
       cancelFleetEditBtn.style.display = "inline-block";
 
       const v = currentActiveVehicle;
+      const vehiclePlate = String(v["Plate"] || "").trim().toLowerCase();
+      const assignedDrivers = driversDatabase.filter(d => String(d["Car Plate"] || "").trim().toLowerCase() === vehiclePlate);
+
       document.getElementById("f-val-plate").innerHTML = `<input type="text" id="edit-plate" value="${v["Plate"] || ''}">`;
       document.getElementById("f-val-brand").innerHTML = `<input type="text" id="edit-brand" value="${v["Brand"] || ''}">`;
       document.getElementById("f-val-model").innerHTML = `<input type="text" id="edit-model" value="${v["Model"] || ''}">`;
@@ -761,14 +766,22 @@
 
       document.getElementById("f-val-km").innerHTML = `<input type="text" id="edit-km" value="${v["Total KM"] || ''}">`;
       
-      const avail = v["Availability"] || "Unassigned";
-      document.getElementById("f-val-availability").innerHTML = `
-        <select id="edit-availability">
-          <option value="Assigned" ${avail==="Assigned"?"selected":""}>Assigned</option>
-          <option value="Unassigned" ${avail==="Unassigned"?"selected":""}>Unassigned</option>
-          <option value="Under Maintenance" ${avail==="Under Maintenance"?"selected":""}>Under Maintenance</option>
-        </select>
-      `;
+      // REGLA DE AVAILABILITY EN EDICIÓN:
+      // Si tiene drivers -> Bloqueado en "Assigned".
+      // Si no tiene drivers -> Desplegable solo entre "Unassigned" y "Under Maintenance".
+      let availabilityHtml = "";
+      if (assignedDrivers.length > 0) {
+        availabilityHtml = `<input type="text" value="Assigned" disabled style="background: #e9ecef; cursor: not-allowed;"><input type="hidden" id="edit-availability" value="Assigned">`;
+      } else {
+        const avail = v["Availability"] || "Unassigned";
+        availabilityHtml = `
+          <select id="edit-availability">
+            <option value="Unassigned" ${avail==="Unassigned"?"selected":""}>Unassigned</option>
+            <option value="Under Maintenance" ${avail==="Under Maintenance"?"selected":""}>Under Maintenance</option>
+          </select>
+        `;
+      }
+      document.getElementById("f-val-availability").innerHTML = availabilityHtml;
 
       document.getElementById("f-val-accidents").innerHTML = `<input type="text" id="edit-acc" value="${v["Accidents"] || ''}">`;
       document.getElementById("f-val-mantenimiento").innerHTML = `<input type="date" id="edit-mant" value="${formatDateForInput(v["Last Maintenance"])}">`;
@@ -780,6 +793,15 @@
     }
 
     async function saveFleetChanges() {
+      const vehiclePlate = String(document.getElementById("edit-plate").value).trim().toLowerCase();
+      const assignedDrivers = driversDatabase.filter(d => String(d["Car Plate"] || "").trim().toLowerCase() === vehiclePlate);
+      
+      // Si tiene drivers, forzamos "Assigned"
+      let finalAvailability = document.getElementById("edit-availability").value;
+      if (assignedDrivers.length > 0) {
+        finalAvailability = "Assigned";
+      }
+
       const updatedVehicle = {
         "Plate": document.getElementById("edit-plate").value.trim(),
         "Brand": document.getElementById("edit-brand").value.trim(),
@@ -787,7 +809,7 @@
         "VIN": document.getElementById("edit-vin").value.trim(),
         "Fuel Type": document.getElementById("edit-fuel").value,
         "Total KM": document.getElementById("edit-km").value.trim(),
-        "Availability": document.getElementById("edit-availability").value,
+        "Availability": finalAvailability,
         "Accidents": document.getElementById("edit-acc").value.trim(),
         "Last Maintenance": document.getElementById("edit-mant").value,
         "Last Oil Change": document.getElementById("edit-oil").value,
@@ -972,7 +994,6 @@
       const shiftVal = d["Shift"] || "";
       document.getElementById("val-shift").innerHTML = `<select id="edit-shift"><option value="Night Shift" ${shiftVal==="Night Shift"?"selected":""}>Night Shift</option><option value="Day Shift" ${shiftVal==="Day Shift"?"selected":""}>Day Shift</option></select>`;
       
-      // Select de Car Plate basado en las placas de Fleet
       let plateOptions = `<option value="">-- Unassigned --</option>`;
       fleetDatabase.forEach(v => {
         const sel = (d["Car Plate"] === v["Plate"]) ? "selected" : "";
