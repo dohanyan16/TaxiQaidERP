@@ -717,7 +717,6 @@
         driversHtml += `</div>`;
       }
 
-      // REGLA AUTOMÁTICA DE AVAILABILITY: Si tiene drivers -> Assigned. Si no -> respeta o Unassigned.
       let currentAvailability = vehicle["Availability"] || "Unassigned";
       if (assignedDrivers.length > 0) {
         currentAvailability = "Assigned";
@@ -766,9 +765,6 @@
 
       document.getElementById("f-val-km").innerHTML = `<input type="text" id="edit-km" value="${v["Total KM"] || ''}">`;
       
-      // REGLA DE AVAILABILITY EN EDICIÓN:
-      // Si tiene drivers -> Bloqueado en "Assigned".
-      // Si no tiene drivers -> Desplegable solo entre "Unassigned" y "Under Maintenance".
       let availabilityHtml = "";
       if (assignedDrivers.length > 0) {
         availabilityHtml = `<input type="text" value="Assigned" disabled style="background: #e9ecef; cursor: not-allowed;"><input type="hidden" id="edit-availability" value="Assigned">`;
@@ -796,7 +792,6 @@
       const vehiclePlate = String(document.getElementById("edit-plate").value).trim().toLowerCase();
       const assignedDrivers = driversDatabase.filter(d => String(d["Car Plate"] || "").trim().toLowerCase() === vehiclePlate);
       
-      // Si tiene drivers, forzamos "Assigned"
       let finalAvailability = document.getElementById("edit-availability").value;
       if (assignedDrivers.length > 0) {
         finalAvailability = "Assigned";
@@ -1043,10 +1038,38 @@
           const index = driversDatabase.findIndex(d => String(d["Iqama Number"]).trim() === String(currentActiveDriver["Iqama Number"]).trim());
           if (index !== -1) driversDatabase[index] = updatedDriver;
 
+          if (selectedPlate) {
+            const vehicle = fleetDatabase.find(v => String(v["Plate"]).trim() === String(selectedPlate).trim());
+            if (vehicle) {
+              vehicle["Availability"] = "Assigned";
+              await fetch(GOOGLE_SHEET_FLEET_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify(vehicle)
+              });
+            }
+          }
+
+          const oldPlate = currentActiveDriver["Car Plate"];
+          if (oldPlate && oldPlate !== selectedPlate) {
+            const remainingDrivers = driversDatabase.filter(d => String(d["Car Plate"] || "").trim() === String(oldPlate).trim());
+            if (remainingDrivers.length === 0) {
+              const oldVehicle = fleetDatabase.find(v => String(v["Plate"]).trim() === String(oldPlate).trim());
+              if (oldVehicle) {
+                oldVehicle["Availability"] = "Unassigned";
+                await fetch(GOOGLE_SHEET_FLEET_URL, {
+                  method: "POST",
+                  headers: { "Content-Type": "text/plain" },
+                  body: JSON.stringify(oldVehicle)
+                });
+              }
+            }
+          }
+
           iqamaInput.value = updatedDriver["Iqama Number"];
           nameInput.value = updatedDriver["Full Name"];
           renderDriverProfile(updatedDriver);
-          alert("Driver updated successfully!");
+          alert("Driver updated and Fleet status synchronized successfully!");
         }
       } catch (err) {
         alert("Could not update Google Sheets.");
