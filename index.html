@@ -379,8 +379,6 @@
               <div class="button-group-row">
                 <button id="refresh-fleet-btn" class="btn-secondary">🔄 Refresh</button>
                 <button id="export-fleet-excel-btn" class="btn-secondary" style="background: #217346; color: white;">📥 Export Excel</button>
-                <button id="import-fleet-excel-btn" class="btn-secondary" style="background: #005a9e; color: white;">📤 Import Excel</button>
-                <input type="file" id="fleet-excel-file-input" accept=".xlsx, .xls" style="display: none;">
               </div>
             </div>
             <div id="fleet-sync-status" class="status-badge">Connecting to Google Sheets...</div>
@@ -440,8 +438,6 @@
               <div class="button-group-row">
                 <button id="refresh-db-btn" class="btn-secondary">🔄 Refresh</button>
                 <button id="export-excel-btn" class="btn-secondary" style="background: #217346; color: white;">📥 Export Excel</button>
-                <button id="import-excel-btn" class="btn-secondary" style="background: #005a9e; color: white;">📤 Import Excel</button>
-                <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="display: none;">
               </div>
             </div>
             <div id="sync-status" class="status-badge">Connecting to Google Sheets...</div>
@@ -642,6 +638,23 @@
     document.getElementById("refresh-fleet-btn").addEventListener("click", fetchFleet);
     document.getElementById("refresh-db-btn").addEventListener("click", fetchDrivers);
 
+    // --- EXPORT EXCEL LOGIC ---
+    document.getElementById("export-fleet-excel-btn").addEventListener("click", () => {
+      if (fleetDatabase.length === 0) { alert("No fleet data available to export."); return; }
+      const worksheet = XLSX.utils.json_to_sheet(fleetDatabase);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Fleet Database");
+      XLSX.writeFile(workbook, "Fleet_Database.xlsx");
+    });
+
+    document.getElementById("export-excel-btn").addEventListener("click", () => {
+      if (driversDatabase.length === 0) { alert("No driver data available to export."); return; }
+      const worksheet = XLSX.utils.json_to_sheet(driversDatabase);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Drivers Database");
+      XLSX.writeFile(workbook, "Drivers_Database.xlsx");
+    });
+
     // --- FLEET MANAGEMENT LOGIC ---
     let currentActiveVehicle = null;
     let isFleetEditMode = false;
@@ -755,16 +768,18 @@
       const vehiclePlate = String(v["Plate"] || "").trim().toLowerCase();
       const assignedDrivers = driversDatabase.filter(d => String(d["Car Plate"] || "").trim().toLowerCase() === vehiclePlate);
 
-      document.getElementById("f-val-plate").innerHTML = `<input type="text" id="edit-plate" value="${v["Plate"] || ''}">`;
-      document.getElementById("f-val-brand").innerHTML = `<input type="text" id="edit-brand" value="${v["Brand"] || ''}">`;
-      document.getElementById("f-val-model").innerHTML = `<input type="text" id="edit-model" value="${v["Model"] || ''}">`;
-      document.getElementById("f-val-vin").innerHTML = `<input type="text" id="edit-vin" value="${v["VIN"] || ''}">`;
-      
-      const fuel = v["Fuel Type"] || "";
-      document.getElementById("f-val-fuel").innerHTML = `<select id="edit-fuel"><option value="Gasoline" ${fuel==="Gasoline"?"selected":""}>Gasoline</option><option value="Hybrid" ${fuel==="Hybrid"?"selected":""}>Hybrid</option><option value="Electric" ${fuel==="Electric"?"selected":""}>Electric</option></select>`;
+      // Campos bloqueados (se mantienen solo informativos/estáticos)
+      document.getElementById("f-val-plate").innerHTML = v["Plate"] || "-";
+      document.getElementById("f-val-brand").innerHTML = v["Brand"] || "-";
+      document.getElementById("f-val-model").innerHTML = v["Model"] || "-";
+      document.getElementById("f-val-vin").innerHTML = v["VIN"] || "-";
+      document.getElementById("f-val-fuel").innerHTML = v["Fuel Type"] || "-";
+      document.getElementById("f-val-km").innerHTML = v["Total KM"] || "-";
+      document.getElementById("f-val-accidents").innerHTML = v["Accidents"] || "0";
+      document.getElementById("f-val-mantenimiento").innerHTML = formatDateForDisplay(v["Last Maintenance"]);
+      document.getElementById("f-val-oil").innerHTML = formatDateForDisplay(v["Last Oil Change"]);
 
-      document.getElementById("f-val-km").innerHTML = `<input type="text" id="edit-km" value="${v["Total KM"] || ''}">`;
-      
+      // Campos EDITABLES permitidos: Availability y Fechas de Insurance / Operation Card
       let availabilityHtml = "";
       if (assignedDrivers.length > 0) {
         availabilityHtml = `<input type="text" value="Assigned" disabled style="background: #e9ecef; cursor: not-allowed;"><input type="hidden" id="edit-availability" value="Assigned">`;
@@ -779,9 +794,6 @@
       }
       document.getElementById("f-val-availability").innerHTML = availabilityHtml;
 
-      document.getElementById("f-val-accidents").innerHTML = `<input type="text" id="edit-acc" value="${v["Accidents"] || ''}">`;
-      document.getElementById("f-val-mantenimiento").innerHTML = `<input type="date" id="edit-mant" value="${formatDateForInput(v["Last Maintenance"])}">`;
-      document.getElementById("f-val-oil").innerHTML = `<input type="date" id="edit-oil" value="${formatDateForInput(v["Last Oil Change"])}">`;
       document.getElementById("f-val-ins-start").innerHTML = `<input type="date" id="edit-ins-start" value="${formatDateForInput(v["Insurance Start Date"])}">`;
       document.getElementById("f-val-ins-exp").innerHTML = `<input type="date" id="edit-ins-exp" value="${formatDateForInput(v["Insurance Expiry Date"])}">`;
       document.getElementById("f-val-op-start").innerHTML = `<input type="date" id="edit-op-start" value="${formatDateForInput(v["Operation Card Start Date"])}">`;
@@ -789,7 +801,8 @@
     }
 
     async function saveFleetChanges() {
-      const vehiclePlate = String(document.getElementById("edit-plate").value).trim().toLowerCase();
+      const v = currentActiveVehicle;
+      const vehiclePlate = String(v["Plate"] || "").trim().toLowerCase();
       const assignedDrivers = driversDatabase.filter(d => String(d["Car Plate"] || "").trim().toLowerCase() === vehiclePlate);
       
       let finalAvailability = document.getElementById("edit-availability").value;
@@ -798,16 +811,16 @@
       }
 
       const updatedVehicle = {
-        "Plate": document.getElementById("edit-plate").value.trim(),
-        "Brand": document.getElementById("edit-brand").value.trim(),
-        "Model": document.getElementById("edit-model").value.trim(),
-        "VIN": document.getElementById("edit-vin").value.trim(),
-        "Fuel Type": document.getElementById("edit-fuel").value,
-        "Total KM": document.getElementById("edit-km").value.trim(),
+        "Plate": v["Plate"],
+        "Brand": v["Brand"],
+        "Model": v["Model"],
+        "VIN": v["VIN"],
+        "Fuel Type": v["Fuel Type"],
+        "Total KM": v["Total KM"],
         "Availability": finalAvailability,
-        "Accidents": document.getElementById("edit-acc").value.trim(),
-        "Last Maintenance": document.getElementById("edit-mant").value,
-        "Last Oil Change": document.getElementById("edit-oil").value,
+        "Accidents": v["Accidents"],
+        "Last Maintenance": v["Last Maintenance"],
+        "Last Oil Change": v["Last Oil Change"],
         "Insurance Start Date": document.getElementById("edit-ins-start").value,
         "Insurance Expiry Date": document.getElementById("edit-ins-exp").value,
         "Operation Card Start Date": document.getElementById("edit-op-start").value,
@@ -825,7 +838,7 @@
         });
         const resData = await res.json();
         if (resData.status === "success") {
-          const idx = fleetDatabase.findIndex(v => String(v["Plate"]).trim() === String(currentActiveVehicle["Plate"]).trim());
+          const idx = fleetDatabase.findIndex(veh => String(veh["Plate"]).trim() === String(currentActiveVehicle["Plate"]).trim());
           if (idx !== -1) fleetDatabase[idx] = updatedVehicle;
 
           fleetPlateInput.value = updatedVehicle["Plate"];
