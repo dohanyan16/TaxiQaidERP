@@ -768,7 +768,6 @@
       const vehiclePlate = String(v["Plate"] || "").trim().toLowerCase();
       const assignedDrivers = driversDatabase.filter(d => String(d["Car Plate"] || "").trim().toLowerCase() === vehiclePlate);
 
-      // Campos bloqueados (se mantienen solo informativos/estáticos)
       document.getElementById("f-val-plate").innerHTML = v["Plate"] || "-";
       document.getElementById("f-val-brand").innerHTML = v["Brand"] || "-";
       document.getElementById("f-val-model").innerHTML = v["Model"] || "-";
@@ -779,7 +778,6 @@
       document.getElementById("f-val-mantenimiento").innerHTML = formatDateForDisplay(v["Last Maintenance"]);
       document.getElementById("f-val-oil").innerHTML = formatDateForDisplay(v["Last Oil Change"]);
 
-      // Campos EDITABLES permitidos: Availability y Fechas de Insurance / Operation Card
       let availabilityHtml = "";
       if (assignedDrivers.length > 0) {
         availabilityHtml = `<input type="text" value="Assigned" disabled style="background: #e9ecef; cursor: not-allowed;"><input type="hidden" id="edit-availability" value="Assigned">`;
@@ -978,26 +976,12 @@
       cancelEditBtn.style.display = "inline-block";
 
       const d = currentActiveDriver;
-      document.getElementById("val-iqama").innerHTML = `<input type="text" id="edit-iqama" value="${d["Iqama Number"] || ''}">`;
-      document.getElementById("val-name").innerHTML = `<input type="text" id="edit-name" value="${d["Full Name"] || ''}">`;
-      document.getElementById("val-nationality").innerHTML = `<input type="text" id="edit-nationality" value="${d["Nationality"] || ''}">`;
-      document.getElementById("val-passport").innerHTML = `<input type="text" id="edit-passport" value="${d["Passport Number"] || ''}">`;
-      document.getElementById("val-tid").innerHTML = `<input type="text" id="edit-tid" value="${d["TID"] || ''}">`;
-      
-      document.getElementById("val-passport-exp").innerHTML = `<input type="date" id="edit-passport-exp" value="${formatDateForInput(d["Passport Expiry Date"])}">`;
-      document.getElementById("val-iqama-issue").innerHTML = `<input type="date" id="edit-iqama-issue" value="${formatDateForInput(d["Iqama Issue Date"])}">`;
-      document.getElementById("val-dob").innerHTML = `<input type="date" id="edit-dob" value="${formatDateForInput(d["Date of Birth"])}">`;
-      document.getElementById("val-iqama-exp").innerHTML = `<input type="date" id="edit-iqama-exp" value="${formatDateForInput(d["Iqama Expiry Date"])}">`;
-      document.getElementById("val-work-start").innerHTML = `<input type="date" id="edit-work-start" value="${formatDateForInput(d["Employment Start Date"])}">`;
-      
+
+      // Solo se habilitan en modo edición los 5 campos solicitados: Phone Number, Arrangement, Shift, Car Plate, Status
       document.getElementById("val-phone").innerHTML = `<input type="text" id="edit-phone" value="${d["Phone Number"] || ''}">`;
-      document.getElementById("val-driver-id").innerHTML = `<input type="text" id="edit-driver-id" value="${d["Driver ID"] || ''}">`;
       
       const arrVal = d["Arrangement"] || "";
       document.getElementById("val-arrangement").innerHTML = `<select id="edit-arrangement"><option value="Salary" ${arrVal==="Salary"?"selected":""}>Salary</option><option value="270 SAR per day" ${arrVal==="270 SAR per day"?"selected":""}>270 SAR per day</option></select>`;
-      
-      const licDate = (d["KSA Driving License Date"] && d["KSA Driving License Date"] !== "Not Yet") ? formatDateForInput(d["KSA Driving License Date"]) : "";
-      document.getElementById("val-license-date").innerHTML = `<input type="date" id="edit-license-date" value="${licDate}">`;
       
       const shiftVal = d["Shift"] || "";
       document.getElementById("val-shift").innerHTML = `<select id="edit-shift"><option value="Night Shift" ${shiftVal==="Night Shift"?"selected":""}>Night Shift</option><option value="Day Shift" ${shiftVal==="Day Shift"?"selected":""}>Day Shift</option></select>`;
@@ -1014,24 +998,24 @@
     }
 
     async function saveEditedDriver() {
+      const d = currentActiveDriver;
       const selectedPlate = document.getElementById("edit-car-plate").value;
-      const licInputVal = document.getElementById("edit-license-date").value.trim();
 
       const updatedDriver = {
-        "Iqama Number": document.getElementById("edit-iqama").value.trim(),
-        "Full Name": document.getElementById("edit-name").value.trim(),
-        "Nationality": document.getElementById("edit-nationality").value.trim(),
-        "Passport Number": document.getElementById("edit-passport").value.trim(),
-        "TID": document.getElementById("edit-tid").value.trim(),
-        "Passport Expiry Date": document.getElementById("edit-passport-exp").value,
-        "Iqama Issue Date": document.getElementById("edit-iqama-issue").value,
-        "Date of Birth": document.getElementById("edit-dob").value,
-        "Iqama Expiry Date": document.getElementById("edit-iqama-exp").value,
-        "Employment Start Date": document.getElementById("edit-work-start").value,
+        "Iqama Number": d["Iqama Number"],
+        "Full Name": d["Full Name"],
+        "Nationality": d["Nationality"],
+        "Passport Number": d["Passport Number"],
+        "TID": d["TID"],
+        "Passport Expiry Date": d["Passport Expiry Date"],
+        "Iqama Issue Date": d["Iqama Issue Date"],
+        "Date of Birth": d["Date of Birth"],
+        "Iqama Expiry Date": d["Iqama Expiry Date"],
+        "Employment Start Date": d["Employment Start Date"],
         "Phone Number": document.getElementById("edit-phone").value.trim(),
-        "Driver ID": document.getElementById("edit-driver-id").value.trim(),
+        "Driver ID": d["Driver ID"],
         "Arrangement": document.getElementById("edit-arrangement").value,
-        "KSA Driving License Date": licInputVal !== "" ? licInputVal : "Not Yet",
+        "KSA Driving License Date": d["KSA Driving License Date"],
         "Shift": document.getElementById("edit-shift").value,
         "Car Plate": selectedPlate,
         "Status": document.getElementById("edit-status").value
@@ -1048,7 +1032,7 @@
         });
         const resData = await response.json();
         if (resData.status === "success") {
-          const index = driversDatabase.findIndex(d => String(d["Iqama Number"]).trim() === String(currentActiveDriver["Iqama Number"]).trim());
+          const index = driversDatabase.findIndex(driver => String(driver["Iqama Number"]).trim() === String(d["Iqama Number"]).trim());
           if (index !== -1) driversDatabase[index] = updatedDriver;
 
           if (selectedPlate) {
@@ -1063,9 +1047,9 @@
             }
           }
 
-          const oldPlate = currentActiveDriver["Car Plate"];
+          const oldPlate = d["Car Plate"];
           if (oldPlate && oldPlate !== selectedPlate) {
-            const remainingDrivers = driversDatabase.filter(d => String(d["Car Plate"] || "").trim() === String(oldPlate).trim());
+            const remainingDrivers = driversDatabase.filter(driver => String(driver["Car Plate"] || "").trim() === String(oldPlate).trim());
             if (remainingDrivers.length === 0) {
               const oldVehicle = fleetDatabase.find(v => String(v["Plate"]).trim() === String(oldPlate).trim());
               if (oldVehicle) {
